@@ -25,19 +25,22 @@
 ```
 $ uv run check.py ＜실제도메인＞.co.kr
 
-kr-email-health  ＜실제도메인＞.co.kr
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  SPF              ✓ PASS   v=spf1 레코드 확인됨
-  DKIM             ✓ PASS   selector 탐지됨
-  DMARC            ✓ PASS   p=reject 정책 적용
-  PTR              ✓ PASS   역방향 DNS 일치
-  KISA RBL         ✓ PASS   차단 목록에 없음
-  KISA 화이트도메인  ~ WARN   등록되지 않음 (권장)
-  국제 블랙리스트    ✓ PASS   Spamhaus/Barracuda/SURBL 이상 없음
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  네이버 호환성 점수  85 / 100
+🔍 ＜실제도메인＞.co.kr 도메인 검사 중...
 
-보고서: reports/＜실제도메인＞.co.kr_20260228_120000.html
+  ✅   SPF                  SPF 레코드가 올바르게 설정되어 있습니다
+  ❌   DKIM                 DKIM 레코드를 찾을 수 없습니다 (자동 탐지 실패)
+  ⚠️   DMARC                DMARC가 있지만 p=none (모니터링 전용) — 실제 차단 효과 없음
+  ✅   PTR                  PTR 레코드가 올바르게 설정되어 있습니다 (61.100.186.252 → mail.＜실제도메인＞.co.kr)
+  ✅   KISA RBL             KISA RBL(한국인터넷진흥원 차단 목록)에 등록되지 않았습니다
+  ⚠️   KISA 화이트도메인     KISA 화이트도메인 확인 불가 (자동 조회 불가 — KISA 사이트 직접 확인 필요)
+  ✅   국제 블랙리스트        주요 국제 블랙리스트에 등록되지 않았습니다
+
+───────────────────────────────────────────────────────
+  네이버 메일 호환성: 🟡 53/100  보통 — 일부 이메일이 스팸함에 분류될 수 있음
+  전체 점수:         63/100  (C등급)
+───────────────────────────────────────────────────────
+
+  📄 리포트 저장됨: reports/＜실제도메인＞.co.kr_YYYYMMDD_HHMMSS.html
 ```
 
 ## 샘플 리포트 (Sample Report)
@@ -79,7 +82,7 @@ Output: `reports/＜실제도메인＞.co.kr_YYYYMMDD_HHMMSS.html`
 ## 옵션 (Options)
 
 ```
-python check.py <domain> [--dkim-selector <selector>] [--output <path>]
+uv run check.py <domain> [--dkim-selector <selector>] [--output <path>]
 ```
 
 ## 배경 (Background)
