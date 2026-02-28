@@ -19,11 +19,11 @@
 
 ## 무엇을 하는 도구인가 (What it does)
 
-도메인을 입력하면 60초 안에 이메일 발송 상태를 진단합니다.
+도메인을 입력하면 15초 안에 이메일 발송 상태를 진단합니다.
 한국 기업 대상 7가지 검사 + 네이버 메일 호환성 점수.
 
 ```
-$ python check.py barobill.co.kr
+$ uv run check.py barobill.co.kr
 
 kr-email-health  barobill.co.kr
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

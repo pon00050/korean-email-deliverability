@@ -66,3 +66,33 @@ CI workflow uses `uv sync --extra dev` (mirrors `kr-forensic-finance` which was 
 **File changed:** `pyproject.toml`, `.github/workflows/tests.yml`
 
 **Tests added:** None — existing 17 tests now pass in CI.
+
+---
+
+## 2026-02-28 — 전체 실행 시간 ~79초: 순차 DNS 조회 구조
+
+**Symptom:** Live runs of `check.py barobill.co.kr` consistently took ~79 seconds.
+
+**Root cause (4 compounding issues):**
+
+1. All 7 checks run sequentially in a for-loop (`check.py:62–71`)
+2. DKIM tries 15 selectors sequentially (`dkim.py:16–18`); each NXDOMAIN waits for the default
+   dnspython timeout (~10s)
+3. `dns.resolver.resolve()` called with no `lifetime=` — dnspython default is ~10s per query
+4. `blacklists.py` and `kisa_rbl.py` both resolve MX records independently with no caching
+
+**Fix:**
+- `ThreadPoolExecutor` at two levels: top-level checks run in parallel (`check.py`), and
+  intra-check DNS queries run in parallel (`dkim.py`, `blacklists.py`, `kisa_rbl.py`)
+- `DNS_TIMEOUT = 5` defined once in `src/checks/_dns_cache.py` and imported as `lifetime=`
+  argument in every `dns.resolver.resolve()` call across all check modules
+- New `src/checks/_dns_cache.py` with `@functools.lru_cache` on `get_sending_ips()` eliminates
+  duplicate MX resolution between `blacklists.py` and `kisa_rbl.py`
+- KISA 화이트도메인 HTTP timeout reduced 10 → 5s
+
+**Files changed:** `check.py`, `src/checks/dkim.py`, `src/checks/blacklists.py`,
+`src/checks/kisa_rbl.py`, `src/checks/ptr.py`, `src/checks/spf.py`, `src/checks/dmarc.py`,
+`src/checks/kisa_whitedomain.py`, `src/checks/_dns_cache.py` (new)
+
+**Tests added:** None new — existing 17 tests use mocks and are unaffected by I/O changes.
+Performance verified by timing two consecutive live runs post-fix.

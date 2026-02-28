@@ -19,6 +19,11 @@
 - All new checks must return a `CheckResult` (see `src/models.py`).
 - Use `uv` for all package management — not pip directly.
 - **Named constants over magic numbers:** Prefer dynamic, named constants (e.g. `MIN_DKIM_KEY_BITS`, `MAX_IPS_TO_CHECK`, `GRADE_THRESHOLDS`) over inline literals. Protocol-spec strings (`v=spf1`, `_dmarc.`, etc.) are exempt — they are fixed by the standard.
+- **DNS queries must be parallelised and time-bounded:** Use `DNS_TIMEOUT = 5` (from
+  `src/checks/_dns_cache.py`) as the `lifetime=` argument on every `dns.resolver.resolve()`
+  call. Multiple independent DNS queries within a single check must use `ThreadPoolExecutor`.
+  Top-level check execution in `check.py` must use `ThreadPoolExecutor`. Never add a
+  sequential loop over DNS queries without justification.
 
 ## Scoring
 

@@ -2,12 +2,13 @@ import socket
 import dns.resolver
 import dns.reversename
 from src.models import CheckResult
+from src.checks._dns_cache import DNS_TIMEOUT
 
 
 def check_ptr(domain: str) -> CheckResult:
     # Step 1: get MX records
     try:
-        mx_answers = dns.resolver.resolve(domain, "MX")
+        mx_answers = dns.resolver.resolve(domain, "MX", lifetime=DNS_TIMEOUT)
         mx_hosts = sorted(
             [(r.preference, str(r.exchange).rstrip(".")) for r in mx_answers]
         )
@@ -41,7 +42,7 @@ def check_ptr(domain: str) -> CheckResult:
     # Step 3: reverse DNS lookup
     try:
         rev_name = dns.reversename.from_address(ip)
-        ptr_answers = dns.resolver.resolve(rev_name, "PTR")
+        ptr_answers = dns.resolver.resolve(rev_name, "PTR", lifetime=DNS_TIMEOUT)
         ptr_hostname = str(ptr_answers[0]).rstrip(".")
     except Exception:
         return CheckResult(
