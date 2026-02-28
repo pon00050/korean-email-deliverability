@@ -10,7 +10,7 @@
 ## Commands
 - Run tests: `uv run pytest tests/ -v`
 - Run scan: `uv run check.py <domain>`
-- Install deps: `uv sync`
+- Install deps: `uv sync --extra dev`
 
 ## Conventions
 - Korean is the primary language for all user-facing strings (`message_ko`, `detail_ko`, `remediation_ko`).

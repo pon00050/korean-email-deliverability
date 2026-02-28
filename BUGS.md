@@ -29,3 +29,40 @@ Short-circuits before `_parse_response()` is called.
 **Tests added:** `tests/test_checks.py::TestKisaWhitedomain`
 - `test_error_page_returns_unavailable` — mocks 200 + error HTML; asserts `status == "error"` and `spam.kisa.or.kr` in `detail_ko`
 - `test_connection_error_returns_unavailable` — mocks `ConnectionError`; asserts `status == "error"`
+
+---
+
+## 2026-02-28 — CI: pyproject.toml TOML structure caused cascading build failures
+
+**Symptom:** GitHub Actions CI failed across 5 consecutive runs with different errors:
+run #1 pytest not found, run #2 requests not found, runs #3–#5 hatchling build errors.
+
+**Root cause (three compounding issues discovered in sequence):**
+
+1. `pytest` declared under `[project.optional-dependencies]` but `uv sync` (without `--extra dev`)
+   does not install optional groups — pytest was never installed.
+
+2. `dependencies = [...]` was placed in the file *after* `[project.urls]`. In TOML, all key-value
+   pairs after a section header belong to that section until the next header. So `dependencies`
+   was being parsed as `project.urls.dependencies`, not `project.dependencies`. Hatchling threw:
+   `TypeError: URL 'dependencies' of field 'project.urls' must be a string`.
+
+3. No `[build-system]` table existed — uv treated the project as a virtual project and skipped
+   the editable install, so main dependencies were never installed in earlier runs.
+
+4. After adding `[build-system]` with hatchling, hatchling could not find the package because
+   no `[tool.hatch.build.targets.wheel]` was defined and the project name `kr-email-health`
+   does not match any directory name. Hatchling threw: `ValueError: Unable to determine which
+   files to ship inside the wheel`.
+
+**Fix:** Restructured `pyproject.toml` so all `[project]` fields are declared before any
+subsection headers, added `[build-system]` with hatchling, and added:
+```toml
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+```
+CI workflow uses `uv sync --extra dev` (mirrors `kr-forensic-finance` which was already working).
+
+**File changed:** `pyproject.toml`, `.github/workflows/tests.yml`
+
+**Tests added:** None — existing 17 tests now pass in CI.
