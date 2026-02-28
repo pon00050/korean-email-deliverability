@@ -20,8 +20,8 @@ from src.models import CheckResult
 _LOOKUP_URL = "https://spam.kisa.or.kr/white/sub2.do"
 _HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (compatible; kr-email-health/0.1; "
-        "+https://github.com/pon00050/kr-email-health)"
+        "Mozilla/5.0 (compatible; korean-email-deliverability/0.1; "
+        "+https://github.com/pon00050/korean-email-deliverability)"
     ),
     "Accept-Language": "ko-KR,ko;q=0.9",
 }
