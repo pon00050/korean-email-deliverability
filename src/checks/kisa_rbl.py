@@ -8,17 +8,18 @@ If NXDOMAIN → IP is clean.
 Verified 2026-02-28: Zone responds correctly (NXDOMAIN for clean IPs).
 """
 
-import socket
 import dns.resolver
 import dns.reversename
+from concurrent.futures import ThreadPoolExecutor
 from src.models import CheckResult
+from src.checks._dns_cache import get_sending_ips, DNS_TIMEOUT
 
 KISA_RBL_ZONE = "rbl.kisa.or.kr"
 MAX_IPS_TO_CHECK = 3
 
 
 def check_kisa_rbl(domain: str) -> CheckResult:
-    ips = _get_sending_ips(domain)
+    ips = list(get_sending_ips(domain))
     if not ips:
         return CheckResult(
             name="KISA RBL",
@@ -27,10 +28,9 @@ def check_kisa_rbl(domain: str) -> CheckResult:
             message_ko="발신 IP를 확인할 수 없어 KISA RBL 검사를 건너뜁니다",
         )
 
-    listed = []
-    for ip in ips:
-        if _is_listed(ip):
-            listed.append(ip)
+    with ThreadPoolExecutor(max_workers=len(ips)) as ex:
+        results = list(ex.map(_is_listed, ips))
+    listed = [ip for ip, hit in zip(ips, results) if hit]
 
     if listed:
         return CheckResult(
@@ -59,37 +59,11 @@ def check_kisa_rbl(domain: str) -> CheckResult:
     )
 
 
-def _get_sending_ips(domain: str) -> list[str]:
-    ips = []
-    try:
-        mx_answers = dns.resolver.resolve(domain, "MX")
-        for rdata in sorted(mx_answers, key=lambda r: r.preference):
-            mx_host = str(rdata.exchange).rstrip(".")
-            try:
-                ip = socket.gethostbyname(mx_host)
-                ips.append(ip)
-            except Exception:
-                continue
-    except Exception:
-        pass
-
-    if not ips:
-        # fallback: try resolving the domain's A record directly
-        try:
-            a_answers = dns.resolver.resolve(domain, "A")
-            for rdata in a_answers:
-                ips.append(str(rdata))
-        except Exception:
-            pass
-
-    return ips[:MAX_IPS_TO_CHECK]
-
-
 def _is_listed(ip: str) -> bool:
     try:
         reversed_ip = ".".join(reversed(ip.split(".")))
         query = f"{reversed_ip}.{KISA_RBL_ZONE}"
-        dns.resolver.resolve(query, "A")
+        dns.resolver.resolve(query, "A", lifetime=DNS_TIMEOUT)
         return True  # resolved → listed
     except dns.resolver.NXDOMAIN:
         return False  # not listed

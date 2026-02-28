@@ -1,10 +1,11 @@
 import dns.resolver
 from src.models import CheckResult
+from src.checks._dns_cache import DNS_TIMEOUT
 
 
 def check_spf(domain: str) -> CheckResult:
     try:
-        answers = dns.resolver.resolve(domain, "TXT")
+        answers = dns.resolver.resolve(domain, "TXT", lifetime=DNS_TIMEOUT)
     except dns.resolver.NXDOMAIN:
         return CheckResult(
             name="SPF",
