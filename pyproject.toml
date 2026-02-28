@@ -1,0 +1,27 @@
+[project]
+name = "kr-email-health"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "한국 이메일 도메인 상태 검사기 (Korean email domain health checker)"
+authors = [{name = "pon00050"}]
+license = {text = "MIT"}
+readme = "README.md"
+keywords = ["email", "deliverability", "korea", "spf", "dmarc", "kisa"]
+
+[project.urls]
+Repository = "https://github.com/pon00050/kr-email-health"
+
+dependencies = [
+    "dnspython",
+    "requests",
+    "jinja2",
+    "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]

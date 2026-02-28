@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+reports/*
+!reports/.gitkeep
+settings.local.json
+/.claude/
