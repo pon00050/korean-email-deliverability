@@ -40,6 +40,10 @@ kr-email-health  barobill.co.kr
 보고서: reports/barobill.co.kr_20260228_120000.html
 ```
 
+## 샘플 리포트 (Sample Report)
+
+코드 없이 결과물을 바로 확인하려면: [barobill.co.kr 샘플 리포트 보기](https://raw.githack.com/pon00050/korean-email-deliverability/main/sample/barobill.co.kr.html)
+
 ## 검사 항목 (Checks)
 
 | 항목 | 설명 |
