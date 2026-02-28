@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>이메일 도메인 상태 보고서 — {{ domain }}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+         background: #f8fafc; color: #1e293b; line-height: 1.6; }
+  .container { max-width: 860px; margin: 0 auto; padding: 32px 16px; }
+
+  /* Header */
+  .header { background: #1e293b; color: white; border-radius: 12px;
+            padding: 32px; margin-bottom: 24px; }
+  .header h1 { font-size: 1.1rem; font-weight: 400; opacity: 0.7; margin-bottom: 4px; }
+  .header .domain { font-size: 2rem; font-weight: 700; margin-bottom: 16px; }
+  .header .meta { font-size: 0.85rem; opacity: 0.6; }
+  .score-row { display: flex; align-items: center; gap: 24px; margin-top: 20px; }
+  .score-circle { width: 80px; height: 80px; border-radius: 50%;
+                  display: flex; align-items: center; justify-content: center;
+                  font-size: 1.8rem; font-weight: 800;
+                  background: {{ grade_color }}; color: white; flex-shrink: 0; }
+  .score-detail .total { font-size: 2.4rem; font-weight: 800; }
+  .score-detail .label { font-size: 0.85rem; opacity: 0.7; }
+
+  /* Naver panel */
+  .naver-panel { background: white; border-radius: 12px; padding: 20px 24px;
+                 margin-bottom: 24px; border-left: 4px solid #03c75a; }
+  .naver-panel h2 { font-size: 0.9rem; color: #64748b; margin-bottom: 8px; }
+  .naver-score-row { display: flex; align-items: center; gap: 12px; }
+  .naver-score-num { font-size: 2rem; font-weight: 800; }
+  .naver-label { font-size: 0.95rem; }
+  .naver-disclaimer { font-size: 0.78rem; color: #94a3b8; margin-top: 10px; }
+
+  /* Summary table */
+  .card { background: white; border-radius: 12px; padding: 20px 24px; margin-bottom: 16px; }
+  .card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 16px; color: #475569; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 0.8rem; color: #94a3b8; font-weight: 500;
+       padding: 0 8px 10px; text-transform: uppercase; letter-spacing: .04em; }
+  td { padding: 10px 8px; border-top: 1px solid #f1f5f9; font-size: 0.92rem; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 99px;
+           font-size: 0.75rem; font-weight: 600; }
+  .badge-pass { background: #dcfce7; color: #166534; }
+  .badge-warn { background: #fef9c3; color: #854d0e; }
+  .badge-fail { background: #fee2e2; color: #991b1b; }
+  .badge-error { background: #f3f4f6; color: #374151; }
+
+  /* Detail sections */
+  .detail-card { background: white; border-radius: 12px; margin-bottom: 12px;
+                 overflow: hidden; }
+  .detail-header { display: flex; align-items: center; justify-content: space-between;
+                   padding: 16px 20px; cursor: pointer; user-select: none; }
+  .detail-header:hover { background: #f8fafc; }
+  .detail-header .check-name { font-weight: 600; font-size: 0.95rem; }
+  .detail-header .check-msg { font-size: 0.88rem; color: #64748b; margin-top: 2px; }
+  .detail-body { padding: 0 20px 16px; border-top: 1px solid #f1f5f9; display: none; }
+  .detail-body.open { display: block; }
+  .detail-section { margin-top: 12px; }
+  .detail-section h4 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: .06em;
+                       color: #94a3b8; margin-bottom: 4px; }
+  .detail-section p { font-size: 0.88rem; color: #374151; }
+  .raw-record { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;
+                padding: 8px 12px; font-family: monospace; font-size: 0.8rem;
+                color: #475569; word-break: break-all; margin-top: 4px; }
+
+  /* Footer */
+  .footer { text-align: center; font-size: 0.78rem; color: #94a3b8; margin-top: 32px; }
+  .footer a { color: #94a3b8; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>이메일 도메인 상태 보고서</h1>
+    <div class="domain">{{ domain }}</div>
+    <div class="meta">검사 시각: {{ scan_time }}</div>
+    <div class="score-row">
+      <div class="score-circle">{{ grade }}</div>
+      <div class="score-detail">
+        <div class="total">{{ overall }}<span style="font-size:1rem;font-weight:400;opacity:.6">/100</span></div>
+        <div class="label">전체 도메인 건강 점수</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Naver compatibility -->
+  <div class="naver-panel">
+    <h2>네이버 메일 호환성 점수</h2>
+    <div class="naver-score-row">
+      <span class="naver-score-num">{{ naver_emoji }} {{ naver_score }}/100</span>
+    </div>
+    <div class="naver-label">{{ naver_label }}</div>
+    <div class="naver-disclaimer">
+      ⚠ 네이버 메일은 공식 API를 제공하지 않습니다.
+      이 점수는 공개된 기술 신호(SPF, DKIM, DMARC, PTR, KISA 화이트도메인)를 기반으로 한 추정값입니다.
+    </div>
+  </div>
+
+  <!-- Summary table -->
+  <div class="card">
+    <h2>검사 요약</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>항목</th>
+          <th>결과</th>
+          <th>점수</th>
+          <th>주요 발견</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in results %}
+        <tr>
+          <td><strong>{{ r.name }}</strong></td>
+          <td>
+            <span class="badge badge-{{ r.status }}">
+              {{ status_emoji(r.status) }}
+              {% if r.status == 'pass' %}통과{% elif r.status == 'warn' %}주의{% elif r.status == 'fail' %}실패{% else %}오류{% endif %}
+            </span>
+          </td>
+          <td>{{ r.score }}/100</td>
+          <td style="font-size:0.85rem;color:#475569">{{ r.message_ko }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Detail sections -->
+  <h2 style="font-size:1rem;color:#475569;margin-bottom:12px;padding-left:4px">항목별 상세 결과</h2>
+  {% for r in results %}
+  <div class="detail-card">
+    <div class="detail-header" onclick="toggle(this)">
+      <div>
+        <div class="check-name">{{ status_emoji(r.status) }} {{ r.name }}</div>
+        <div class="check-msg">{{ r.message_ko }}</div>
+      </div>
+      <span style="color:#94a3b8;font-size:1.2rem">▼</span>
+    </div>
+    <div class="detail-body">
+      {% if r.detail_ko %}
+      <div class="detail-section">
+        <h4>설명</h4>
+        <p>{{ r.detail_ko }}</p>
+      </div>
+      {% endif %}
+      {% if r.remediation_ko %}
+      <div class="detail-section">
+        <h4>조치 방법</h4>
+        <p style="white-space:pre-line">{{ r.remediation_ko }}</p>
+      </div>
+      {% endif %}
+      {% if r.raw %}
+      <div class="detail-section">
+        <h4>원시 레코드</h4>
+        <div class="raw-record">{{ r.raw }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>kr-email-health · 이 결과는 참고용이며 전문 컨설팅을 대체하지 않습니다</p>
+    <p style="margin-top:4px"><a href="https://github.com/pon00050/kr-email-health">github.com/pon00050/kr-email-health</a></p>
+  </div>
+
+</div>
+<script>
+function toggle(header) {
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+  header.querySelector('span:last-child').textContent = body.classList.contains('open') ? '▲' : '▼';
+}
+</script>
+</body>
+</html>
