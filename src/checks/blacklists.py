@@ -10,9 +10,10 @@ All three offer free DNS-based lookups with no API key required.
 Rate limiting: add per-query delay if running bulk scans.
 """
 
-import socket
 import dns.resolver
+from concurrent.futures import ThreadPoolExecutor
 from src.models import CheckResult
+from src.checks._dns_cache import get_sending_ips, DNS_TIMEOUT
 
 _IP_BLACKLISTS = {
     "Spamhaus ZEN": "zen.spamhaus.org",
@@ -27,20 +28,27 @@ MAX_IPS_TO_CHECK = 3
 
 
 def check_blacklists(domain: str) -> CheckResult:
-    ips = _get_ips(domain)
-    findings: list[str] = []
+    ips = list(get_sending_ips(domain))
 
-    # IP-based checks
+    # Build a flat list of (query_string, label, ip_or_none) tuples
+    queries: list[tuple[str, str, str | None]] = []
     for ip in ips:
-        reversed_ip = ".".join(reversed(ip.split(".")))
+        rev = ".".join(reversed(ip.split(".")))
         for name, zone in _IP_BLACKLISTS.items():
-            if _dns_listed(f"{reversed_ip}.{zone}"):
-                findings.append(f"{name} (IP: {ip})")
-
-    # Domain-based checks
+            queries.append((f"{rev}.{zone}", name, ip))
     for name, zone in _DOMAIN_BLACKLISTS.items():
-        if _dns_listed(f"{domain}.{zone}"):
-            findings.append(f"{name} (도메인)")
+        queries.append((f"{domain}.{zone}", name, None))
+
+    findings: list[str] = []
+    if queries:
+        with ThreadPoolExecutor(max_workers=len(queries)) as ex:
+            futures = {ex.submit(_dns_listed, q): (label, ip) for q, label, ip in queries}
+            for fut, (label, ip) in futures.items():
+                if fut.result():
+                    if ip:
+                        findings.append(f"{label} (IP: {ip})")
+                    else:
+                        findings.append(f"{label} (도메인)")
 
     if findings:
         listed_str = ", ".join(findings)
@@ -71,26 +79,9 @@ def check_blacklists(domain: str) -> CheckResult:
     )
 
 
-def _get_ips(domain: str) -> list[str]:
-    ips = []
-    try:
-        mx_answers = dns.resolver.resolve(domain, "MX")
-        for rdata in sorted(mx_answers, key=lambda r: r.preference):
-            mx_host = str(rdata.exchange).rstrip(".")
-            try:
-                ip = socket.gethostbyname(mx_host)
-                if ip not in ips:
-                    ips.append(ip)
-            except Exception:
-                continue
-    except Exception:
-        pass
-    return ips[:MAX_IPS_TO_CHECK]
-
-
 def _dns_listed(query: str) -> bool:
     try:
-        dns.resolver.resolve(query, "A")
+        dns.resolver.resolve(query, "A", lifetime=DNS_TIMEOUT)
         return True  # resolved → listed
     except dns.resolver.NXDOMAIN:
         return False

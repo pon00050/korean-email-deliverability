@@ -25,7 +25,7 @@ _HEADERS = {
     ),
     "Accept-Language": "ko-KR,ko;q=0.9",
 }
-_TIMEOUT = 10
+_TIMEOUT = 5
 
 
 def check_kisa_whitedomain(domain: str) -> CheckResult:

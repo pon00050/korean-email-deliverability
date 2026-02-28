@@ -165,7 +165,7 @@ class TestScorer:
 class TestBlacklists:
     def test_clean_domain(self):
         from src.checks.blacklists import check_blacklists
-        with patch("src.checks.blacklists._get_ips", return_value=["1.2.3.4"]), \
+        with patch("src.checks.blacklists.get_sending_ips", return_value=("1.2.3.4",)), \
              patch("src.checks.blacklists._dns_listed", return_value=False):
             r = check_blacklists("clean.co.kr")
         assert r.status == "pass"
@@ -173,7 +173,7 @@ class TestBlacklists:
 
     def test_listed_domain(self):
         from src.checks.blacklists import check_blacklists
-        with patch("src.checks.blacklists._get_ips", return_value=["1.2.3.4"]), \
+        with patch("src.checks.blacklists.get_sending_ips", return_value=("1.2.3.4",)), \
              patch("src.checks.blacklists._dns_listed", return_value=True):
             r = check_blacklists("spam.co.kr")
         assert r.status == "fail"

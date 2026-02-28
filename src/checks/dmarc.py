@@ -1,12 +1,13 @@
 import dns.resolver
 import re
 from src.models import CheckResult
+from src.checks._dns_cache import DNS_TIMEOUT
 
 
 def check_dmarc(domain: str) -> CheckResult:
     query = f"_dmarc.{domain}"
     try:
-        answers = dns.resolver.resolve(query, "TXT")
+        answers = dns.resolver.resolve(query, "TXT", lifetime=DNS_TIMEOUT)
     except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
         return _missing()
     except Exception as e:

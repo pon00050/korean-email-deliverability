@@ -12,6 +12,7 @@ Usage:
 import argparse
 import sys
 import io
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
 # Ensure UTF-8 output on Windows terminals
@@ -58,15 +59,26 @@ def main() -> None:
         ("국제 블랙리스트",    lambda: check_blacklists(domain)),
     ]
 
+    from src.models import CheckResult
+
+    print(f"  검사 중...", end="\r")
+    results_map: dict[str, CheckResult] = {}
+    with ThreadPoolExecutor(max_workers=len(checks)) as ex:
+        futures = {ex.submit(fn): label for label, fn in checks}
+        for fut in as_completed(futures):
+            label = futures[fut]
+            try:
+                results_map[label] = fut.result()
+            except Exception as e:
+                results_map[label] = CheckResult(
+                    name=label, status="error", score=0,
+                    message_ko=f"예기치 않은 오류: {e}"
+                )
+
+    # Print in original display order
     results = []
-    for label, fn in checks:
-        print(f"  검사 중: {label}...", end="\r")
-        try:
-            result = fn()
-        except Exception as e:
-            from src.models import CheckResult
-            result = CheckResult(name=label, status="error", score=0,
-                                 message_ko=f"예기치 않은 오류: {e}")
+    for label, _ in checks:
+        result = results_map[label]
         results.append(result)
         emoji = status_emoji(result.status)
         print(f"  {emoji:<3} {result.name:<20} {result.message_ko}")
