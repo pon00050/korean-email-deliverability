@@ -3,7 +3,7 @@
 > 한국 이메일 도메인 상태 검사기 — Korean email domain health checker.
 > SPF · DKIM · DMARC · KISA RBL · 화이트도메인 · Naver 호환성 점수
 
-![Tests](https://github.com/pon00050/kr-email-health/actions/workflows/tests.yml/badge.svg)
+![Tests](https://github.com/pon00050/korean-email-deliverability/actions/workflows/tests.yml/badge.svg)
 
 ---
 
@@ -46,16 +46,16 @@ kr-email-health  barobill.co.kr
 
 ### uv (권장)
 ```bash
-git clone https://github.com/pon00050/kr-email-health
-cd kr-email-health
+git clone https://github.com/pon00050/korean-email-deliverability
+cd korean-email-deliverability
 uv sync
 uv run check.py barobill.co.kr
 ```
 
 ### pip
 ```bash
-git clone https://github.com/pon00050/kr-email-health
-cd kr-email-health
+git clone https://github.com/pon00050/korean-email-deliverability
+cd korean-email-deliverability
 pip install -e .
 python check.py barobill.co.kr
 ```
