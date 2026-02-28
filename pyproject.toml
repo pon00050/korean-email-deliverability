@@ -7,10 +7,6 @@ authors = [{name = "pon00050"}]
 license = {text = "MIT"}
 readme = "README.md"
 keywords = ["email", "deliverability", "korea", "spf", "dmarc", "kisa"]
-
-[project.urls]
-Repository = "https://github.com/pon00050/korean-email-deliverability"
-
 dependencies = [
     "dnspython",
     "requests",
@@ -18,12 +14,15 @@ dependencies = [
     "python-dotenv",
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+[project.urls]
+Repository = "https://github.com/pon00050/korean-email-deliverability"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
