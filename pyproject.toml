@@ -9,7 +9,7 @@ readme = "README.md"
 keywords = ["email", "deliverability", "korea", "spf", "dmarc", "kisa"]
 
 [project.urls]
-Repository = "https://github.com/pon00050/kr-email-health"
+Repository = "https://github.com/pon00050/korean-email-deliverability"
 
 dependencies = [
     "dnspython",
