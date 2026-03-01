@@ -5,6 +5,95 @@ Format per entry: date · symptom · root cause · fix · test added.
 
 ---
 
+## 2026-03-02 — Railway Phase 2 첫 배포: 6단계 연속 오류
+
+**Symptom:** Phase 2 FastAPI app failed to deploy on Railway across 6 consecutive
+attempts over ~90 minutes. Each fix uncovered the next hidden problem.
+
+**Root causes (in order of discovery):**
+
+### 1. No start command found
+Railpack could not detect a start command. Root cause: `railway.toml` contained
+`[build] builder = "nixpacks"` which conflicted with Railpack (the current default
+builder). Railpack ignored the `startCommand` in the file as a result.
+
+**Fix:** Removed `[build]` section entirely from `railway.toml`. Set start command
+to `uvicorn app:app --host 0.0.0.0 --port $PORT` directly in the Railway dashboard
+as an immediate workaround.
+
+---
+
+### 2. `uvicorn: command not found`
+Railpack installs packages into `.venv` but the dashboard start command ran `uvicorn`
+as a global binary, which is not on the container PATH.
+
+**Fix:** Changed start command to `python -m uvicorn app:app --host 0.0.0.0 --port $PORT`.
+
+---
+
+### 3. `/app/.venv/bin/python: No module named uvicorn`
+`python -m uvicorn` found the venv Python but uvicorn was not installed in it, because
+`uv.lock` had never been updated after Phase 2 dependencies were added to `pyproject.toml`.
+Railway runs `uv sync --locked` (strict — will not update the lockfile), so it installed
+only what was in the stale lockfile from Phase 1.
+
+**Fix:** Changed start command to `uv run uvicorn ...` (uv is on PATH via mise and
+activates the venv automatically). Running `uv sync --extra dev` locally regenerated
+`uv.lock` with all Phase 2 packages and committed it.
+
+---
+
+### 4. `ModuleNotFoundError: No module named 'src.db'`
+All Phase 2 source files (`src/db.py`, `src/emailer.py`, `src/scheduler.py`),
+templates, and tests had been created and tested locally but were never committed
+to git. Railway's container only has what is in the repository.
+
+**Fix:** Committed all 10 missing files in one batch commit.
+
+---
+
+### 5. Healthcheck timeout (30s) too short
+`railway.toml` had `healthcheckTimeout = 30`. The container needed more time on cold
+start to connect to Postgres and start APScheduler. Railway marked the deploy failed
+before the app was ready.
+
+**Fix:** Increased `healthcheckTimeout` to `300`.
+
+---
+
+### 6. `RuntimeError: Form data requires "python-multipart" to be installed`
+FastAPI's `Form()` requires `python-multipart` as a separate package. It is not
+installed by bare `fastapi`. The dependency was not declared in `pyproject.toml`.
+This caused uvicorn to crash at startup while registering the `/subscribe` route
+(FastAPI validates form dependencies at route-decoration time, not request time).
+
+**Fix:** Replaced `"fastapi>=0.115"` with `"fastapi[standard]>=0.115"` in
+`pyproject.toml`. The `[standard]` extra is the officially recommended install and
+bundles `python-multipart`, `jinja2`, `uvicorn[standard]`, `email-validator`, and
+`pydantic-settings` — eliminating the entire class of missing-sub-dependency errors.
+Ran `uv sync --extra dev` to update `uv.lock` and committed both files.
+
+**Final state:** Both Railway services (Postgres + app) show green "Online" status.
+`GET /health` returns HTTP 200. Database connection established. Scheduler started.
+
+**Lessons:**
+- Always run `uv sync --extra dev` and commit `uv.lock` immediately after editing
+  `pyproject.toml` — a stale lockfile is invisible locally (pip fills the gap) but
+  fatal on Railway where `uv sync --locked` is strict.
+- Always commit all new files before pushing deploy-triggering changes. `git status`
+  before every push.
+- Use `fastapi[standard]` not bare `fastapi` to avoid piecemeal sub-dependency failures.
+- Remove `[build] builder = "nixpacks"` from `railway.toml` — Railpack is the current
+  default and the nixpacks builder key causes silent config conflicts.
+- Set `healthcheckTimeout = 300` (5 minutes) for any app with a DB connection in the
+  startup path.
+
+**Files changed:** `pyproject.toml`, `uv.lock`, `railway.toml`, `Procfile`, `app.py`
+
+**Tests added:** None — these were infrastructure/deployment failures, not logic bugs.
+
+---
+
 ## 2026-02-28 — KISA 화이트도메인: "응답 파싱 실패" 표시 오류
 
 **Symptom:** Live scan of `barobill.co.kr` showed "응답 파싱 실패 — 사이트 구조가 변경되었을 수 있습니다"
