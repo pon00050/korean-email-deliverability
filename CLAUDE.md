@@ -12,6 +12,20 @@
 - Run scan: `uv run check.py <domain>`
 - Install deps: `uv sync --extra dev`
 
+## Privacy — No Real Company Data in Public Files
+
+**Never use real company names, domains, or scan results in any public-facing file.**
+This includes: `README.md`, `sample/`, `content/` articles, code comments, test fixtures,
+and any file tracked by git (unless it is explicitly gitignored).
+
+- Use `example.co.kr` as the canonical dummy domain in all examples and sample output.
+- When a comparison table or multi-domain example is needed, use anonymised labels:
+  "세금계산서 SaaS A", "이커머스 B2B SaaS B", etc. — never real brand names.
+- Prospect intelligence files (`content/outreach_emails.md`, `content/target_list.md`)
+  are gitignored and must never be committed.
+- If real scan data is needed for research or drafting, keep it in a local-only file
+  that is covered by `.gitignore` before writing anything.
+
 ## Conventions
 - Korean is the primary language for all user-facing strings (`message_ko`, `detail_ko`, `remediation_ko`).
 - `status` values: `"pass"`, `"warn"`, `"fail"`, `"error"` — no others.
