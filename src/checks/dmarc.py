@@ -6,6 +6,7 @@ from src.checks._dns_cache import DNS_TIMEOUT
 DMARC_SCORE_REJECT = 100
 DMARC_SCORE_QUARANTINE = 75
 DMARC_SCORE_NONE = 20
+DMARC_PENALTY_NO_RUA = 10
 
 
 def check_dmarc(domain: str) -> CheckResult:
@@ -47,7 +48,7 @@ def check_dmarc(domain: str) -> CheckResult:
     detail = f"정책: p={policy}, 적용률: pct={pct}"
     if not rua:
         detail += "\n⚠ rua 태그 없음 — DMARC 리포트를 수신하지 못합니다"
-        score = max(0, score - 10)
+        score = max(0, score - DMARC_PENALTY_NO_RUA)
 
     remediation = ""
     if policy == "none":
