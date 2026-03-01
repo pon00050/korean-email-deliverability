@@ -15,7 +15,9 @@ from src.models import CheckResult
 from src.checks._dns_cache import get_sending_ips, DNS_TIMEOUT
 
 KISA_RBL_ZONE = "rbl.kisa.or.kr"
-MAX_IPS_TO_CHECK = 3
+KISA_RBL_SCORE_PASS = 100
+KISA_RBL_SCORE_ERROR = 50   # inconclusive: can't resolve sending IPs
+KISA_RBL_SCORE_FAIL = 0
 
 
 def check_kisa_rbl(domain: str) -> CheckResult:
@@ -24,7 +26,7 @@ def check_kisa_rbl(domain: str) -> CheckResult:
         return CheckResult(
             name="KISA RBL",
             status="error",
-            score=50,
+            score=KISA_RBL_SCORE_ERROR,
             message_ko="발신 IP를 확인할 수 없어 KISA RBL 검사를 건너뜁니다",
         )
 
@@ -36,7 +38,7 @@ def check_kisa_rbl(domain: str) -> CheckResult:
         return CheckResult(
             name="KISA RBL",
             status="fail",
-            score=0,
+            score=KISA_RBL_SCORE_FAIL,
             message_ko=f"KISA RBL에 등록되어 있습니다 (IP: {', '.join(listed)})",
             detail_ko=(
                 "KISA(한국인터넷진흥원) 차단 목록에 등록된 IP는 "
@@ -53,7 +55,7 @@ def check_kisa_rbl(domain: str) -> CheckResult:
     return CheckResult(
         name="KISA RBL",
         status="pass",
-        score=100,
+        score=KISA_RBL_SCORE_PASS,
         message_ko="KISA RBL(한국인터넷진흥원 차단 목록)에 등록되지 않았습니다",
         raw=f"Checked IPs: {', '.join(ips)}",
     )

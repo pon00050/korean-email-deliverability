@@ -24,7 +24,8 @@ _DOMAIN_BLACKLISTS = {
     "SURBL": "multi.surbl.org",
 }
 
-MAX_IPS_TO_CHECK = 3
+BLACKLISTS_SCORE_PASS = 100
+BLACKLISTS_SCORE_FAIL = 0
 
 
 def check_blacklists(domain: str) -> CheckResult:
@@ -55,7 +56,7 @@ def check_blacklists(domain: str) -> CheckResult:
         return CheckResult(
             name="국제 블랙리스트",
             status="fail",
-            score=0,
+            score=BLACKLISTS_SCORE_FAIL,
             message_ko=f"블랙리스트에 등록되어 있습니다: {listed_str}",
             detail_ko=(
                 "국제 블랙리스트에 등록되면 Gmail, Outlook 등 글로벌 메일 서비스로의 "
@@ -73,7 +74,7 @@ def check_blacklists(domain: str) -> CheckResult:
     return CheckResult(
         name="국제 블랙리스트",
         status="pass",
-        score=100,
+        score=BLACKLISTS_SCORE_PASS,
         message_ko=f"주요 국제 블랙리스트에 등록되지 않았습니다",
         raw=f"Checked: {checked} | IPs: {', '.join(ips) if ips else 'none'}",
     )
