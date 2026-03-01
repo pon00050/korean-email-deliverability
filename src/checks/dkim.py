@@ -4,6 +4,7 @@ from src.models import CheckResult
 from src.checks._dns_cache import DNS_TIMEOUT
 
 MIN_DKIM_KEY_BITS = 2048
+DKIM_WEAK_KEY_SCORE = 70
 
 COMMON_SELECTORS = [
     "default", "google", "selector1", "selector2",
@@ -30,7 +31,7 @@ def check_dkim(domain: str, selector: str | None = None) -> CheckResult:
                     return CheckResult(
                         name="DKIM",
                         status="warn",
-                        score=70,
+                        score=DKIM_WEAK_KEY_SCORE,
                         message_ko=f"DKIM 서명이 있지만 키 길이가 짧습니다 ({key_bits}비트, 셀렉터: {sel})",
                         detail_ko="1024비트 이하 키는 취약합니다. 2048비트 이상을 권장합니다.",
                         remediation_ko="이메일 발송 서비스(ESP) 설정에서 DKIM 키를 2048비트로 재생성하세요.",

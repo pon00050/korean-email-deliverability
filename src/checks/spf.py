@@ -2,6 +2,10 @@ import dns.resolver
 from src.models import CheckResult
 from src.checks._dns_cache import DNS_TIMEOUT
 
+SPF_SCORE_PASS = 100
+SPF_SCORE_WARN_NO_TERMINATOR = 60
+SPF_SCORE_WARN_PERMISSIVE = 40
+
 
 def check_spf(domain: str) -> CheckResult:
     try:
@@ -33,7 +37,7 @@ def check_spf(domain: str) -> CheckResult:
         return CheckResult(
             name="SPF",
             status="warn",
-            score=40,
+            score=SPF_SCORE_WARN_PERMISSIVE,
             message_ko="SPF 레코드가 있지만 효과가 없습니다 (+all 또는 ?all)",
             detail_ko="+all은 모든 서버의 발송을 허용합니다. 스팸 방지 효과가 없습니다.",
             remediation_ko="SPF 레코드 끝을 -all 또는 ~all로 변경하세요.\n예: v=spf1 include:stibee.com -all",
@@ -44,7 +48,7 @@ def check_spf(domain: str) -> CheckResult:
         return CheckResult(
             name="SPF",
             status="pass",
-            score=100,
+            score=SPF_SCORE_PASS,
             message_ko="SPF 레코드가 올바르게 설정되어 있습니다",
             raw=record,
         )
@@ -52,7 +56,7 @@ def check_spf(domain: str) -> CheckResult:
     return CheckResult(
         name="SPF",
         status="warn",
-        score=60,
+        score=SPF_SCORE_WARN_NO_TERMINATOR,
         message_ko="SPF 레코드가 있지만 종료 정책(-all)이 없습니다",
         remediation_ko="SPF 레코드 끝에 -all 또는 ~all을 추가하세요.",
         raw=record,

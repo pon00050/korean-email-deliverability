@@ -4,6 +4,12 @@ import dns.reversename
 from src.models import CheckResult
 from src.checks._dns_cache import DNS_TIMEOUT
 
+PTR_SCORE_PASS = 100
+PTR_SCORE_FCRDN_MISMATCH = 50
+PTR_SCORE_FORWARD_FAIL = 60
+PTR_SCORE_NO_PTR = 20
+PTR_SCORE_NO_IP = 30
+
 
 def check_ptr(domain: str) -> CheckResult:
     # Step 1: get MX records
@@ -35,7 +41,7 @@ def check_ptr(domain: str) -> CheckResult:
         return CheckResult(
             name="PTR",
             status="warn",
-            score=30,
+            score=PTR_SCORE_NO_IP,
             message_ko=f"MX 호스트({mx_host})의 IP를 확인할 수 없습니다",
         )
 
@@ -48,7 +54,7 @@ def check_ptr(domain: str) -> CheckResult:
         return CheckResult(
             name="PTR",
             status="fail",
-            score=20,
+            score=PTR_SCORE_NO_PTR,
             message_ko=f"PTR(역방향 DNS) 레코드가 없습니다 (IP: {ip})",
             detail_ko="PTR 레코드가 없으면 네이버 메일 등 한국 ISP의 필터링에 영향을 줄 수 있습니다.",
             remediation_ko="호스팅 또는 서버 제공업체에 PTR 레코드 설정을 요청하세요.",
@@ -61,7 +67,7 @@ def check_ptr(domain: str) -> CheckResult:
             return CheckResult(
                 name="PTR",
                 status="pass",
-                score=100,
+                score=PTR_SCORE_PASS,
                 message_ko=f"PTR 레코드가 올바르게 설정되어 있습니다 ({ip} → {ptr_hostname})",
                 raw=f"{ip} → {ptr_hostname} → {forward_ip}",
             )
@@ -69,7 +75,7 @@ def check_ptr(domain: str) -> CheckResult:
             return CheckResult(
                 name="PTR",
                 status="warn",
-                score=50,
+                score=PTR_SCORE_FCRDN_MISMATCH,
                 message_ko=f"PTR 레코드가 있지만 정방향 확인이 일치하지 않습니다",
                 detail_ko=f"PTR: {ptr_hostname}, 정방향 조회 IP: {forward_ip} (예상: {ip})",
                 remediation_ko="PTR 레코드와 A 레코드가 서로 일치하도록 수정하세요.",
@@ -79,7 +85,7 @@ def check_ptr(domain: str) -> CheckResult:
         return CheckResult(
             name="PTR",
             status="warn",
-            score=60,
+            score=PTR_SCORE_FORWARD_FAIL,
             message_ko=f"PTR 레코드가 있지만 정방향 확인 불가 ({ptr_hostname})",
             raw=f"{ip} → {ptr_hostname}",
         )
