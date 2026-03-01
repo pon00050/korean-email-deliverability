@@ -29,8 +29,8 @@ and any file tracked by git (unless it is explicitly gitignored).
 
 **Live / end-to-end scan testing must use a real domain.**
 `example.co.kr` has no DNS records and will produce all-fail results, which is useless
-for verifying scanner behaviour. Use `barobill.co.kr` (or any other live `.co.kr` domain
-you have access to) when running `uv run check.py` locally to validate real output.
+for verifying scanner behaviour. Use any live `.co.kr` domain you have access to when
+running `uv run check.py` locally to validate real output.
 Never commit those local run results to a public file.
 
 ## Conventions
