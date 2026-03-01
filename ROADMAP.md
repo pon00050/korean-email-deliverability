@@ -13,19 +13,23 @@ Post-MVP feature roadmap. MVP is the CLI scan tool with 7 checks + Naver score.
 
 ---
 
-## Phase 2 — Hosted Monitoring Service (March 2026, ~4 weeks)
+## Phase 2 — Hosted Monitoring Service ✅ (live 2026-03-02)
 
-- [ ] **Cloud deployment** — host existing scan logic on a server (not customer's machine).
-  Single hosted endpoint that accepts a domain and runs the full check suite.
-- [ ] **Subscriber store** — minimal persistent store: (domain, email, interval, next_scan_at).
-  Seeded manually by operator; no customer-facing UI required.
-- [ ] **Scheduler** — cron/task runner: for each active subscription, run scan at interval,
-  store result.
-- [ ] **Email delivery** — on each scheduled scan, send the existing HTML report to the
-  subscriber's email address.
+- [x] **Cloud deployment** — FastAPI app running on Railway (`dev` branch auto-deploy).
+  Live at `https://korean-email-deliverability-production.up.railway.app`.
+- [x] **Subscriber store** — PostgreSQL on Railway; `subscribers` table with
+  (domain, email, interval, next_scan_at, active).
+- [x] **Scheduler** — APScheduler running inside FastAPI `lifespan`; scans each active
+  subscriber at configured interval.
+- [x] **Email delivery** — Resend integration implemented (`src/emailer.py`);
+  HTML report delivered to subscriber on each scheduled scan.
+- [x] **Self-serve signup form** — `/` serves a signup form (scope expanded beyond
+  original plan; operator no longer needs to seed subscribers manually).
+- [ ] **Resend credentials** — `RESEND_API_KEY` and `FROM_EMAIL` are placeholders in
+  Railway Variables. End-to-end email delivery blocked until a sending domain is
+  verified in Resend and credentials are updated. See `SETUP_PHASE2.md` Step 2.
 
-**Out of scope this phase:** web UI, dashboard, multi-domain views, self-serve signup,
-payment processing.
+**Delivered beyond original scope:** self-serve signup UI (originally "out of scope this phase").
 
 ---
 
