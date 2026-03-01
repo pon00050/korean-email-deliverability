@@ -7,6 +7,11 @@ dependencies = [
     "requests",
     "jinja2",
     "python-dotenv",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "psycopg[binary]>=3.1",
+    "apscheduler>=3.10",
+    "resend>=2.0",
 ]
 
 [project.optional-dependencies]
