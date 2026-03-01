@@ -11,27 +11,7 @@ import dns.resolver
 
 
 # ─── KISA 화이트도메인 ─────────────────────────────────────────────────────────
-
-class TestKisaWhitedomain:
-    def test_error_page_returns_unavailable(self):
-        """KISA returns 200 with error HTML — should show unavailable, not parse failure."""
-        from src.checks.kisa_whitedomain import check_kisa_whitedomain
-        with patch("src.checks.kisa_whitedomain.requests.get") as mock_get:
-            mock_get.return_value = Mock(
-                status_code=200,
-                text="잘못된 접근입니다.",
-                raise_for_status=lambda: None,
-            )
-            result = check_kisa_whitedomain("barobill.co.kr")
-        assert result.status == "error"
-        assert "spam.kisa.or.kr" in result.detail_ko
-
-    def test_connection_error_returns_unavailable(self):
-        from src.checks.kisa_whitedomain import check_kisa_whitedomain
-        with patch("src.checks.kisa_whitedomain.requests.get") as mock_get:
-            mock_get.side_effect = requests.exceptions.ConnectionError()
-            result = check_kisa_whitedomain("barobill.co.kr")
-        assert result.status == "error"
+# Service terminated June 28, 2024. Full tests in test_kisa_whitedomain.py.
 
 
 # ─── SPF ──────────────────────────────────────────────────────────────────────

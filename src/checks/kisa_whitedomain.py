@@ -1,104 +1,44 @@
 """
 KISA 화이트도메인 (whitedomain) registration check.
 
-The 화이트도메인 program is operated by KISA at:
-  https://화이트도메인.한국  (IDN: https://xn--hq1bm8jm9l.xn--3e0b707e)
-  Mirror: https://whitedomains.kisa.or.kr
+** SERVICE TERMINATED June 28, 2024 **
 
-Registration signals Korean ISPs (Naver, Kakao) that the domain is a
-legitimate sender. Stibee's sending IPs are registered; individual
-company sending domains typically are not.
+KISA formally ended the 화이트도메인 program:
+  - New registrations closed: June 14, 2024
+  - Service fully terminated: June 28, 2024
+  - Reason: shift to managed ESPs (Naver Cloud, Kakao) reduced practical effectiveness
 
-Verified 2026-02-28: No public API or queryable URL exists. KISA's site
-(spam.kisa.or.kr/white/sub2.do) rejects direct GET requests with params.
-The _unavailable() fallback is intentional — direct users to check manually.
+The replacement path is individual compliance with Naver and Kakao bulk sender
+requirements (SPF + DKIM + DMARC + PTR), which Naver made mandatory July 19, 2024.
+
+No network request is made. The check returns a static warn result explaining
+the termination and directing users to the current Naver/Kakao paths.
+
+Source: Thundermail 화이트도메인 서비스 종료 안내 (blog.thundermail.co.kr/366)
 """
 
-import requests
 from src.models import CheckResult
 
-_LOOKUP_URL = "https://spam.kisa.or.kr/white/sub2.do"
-_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (compatible; korean-email-deliverability/0.1; "
-        "+https://github.com/pon00050/korean-email-deliverability)"
-    ),
-    "Accept-Language": "ko-KR,ko;q=0.9",
-}
-_TIMEOUT = 5
+_NAME = "KISA 화이트도메인"
 
 
-def check_kisa_whitedomain(domain: str) -> CheckResult:
-    try:
-        resp = requests.get(
-            _LOOKUP_URL,
-            params={"searchDomain": domain},
-            headers=_HEADERS,
-            timeout=_TIMEOUT,
-        )
-        resp.raise_for_status()
-        if "잘못된 접근" in resp.text:
-            return _unavailable("자동 조회 불가 — KISA 사이트 직접 확인 필요")
-    except requests.exceptions.Timeout:
-        return _unavailable("요청 시간 초과")
-    except requests.exceptions.RequestException:
-        return _unavailable("사이트 연결 실패 — 수동 확인 필요")
-
-    registered = _parse_response(resp.text, domain)
-
-    if registered is None:
-        return _unavailable("응답 파싱 실패 — 사이트 구조가 변경되었을 수 있습니다")
-
-    if registered:
-        return CheckResult(
-            name="KISA 화이트도메인",
-            status="pass",
-            score=100,
-            message_ko="KISA 화이트도메인에 등록되어 있습니다",
-            detail_ko="화이트도메인 등록은 네이버, 카카오 등 한국 ISP에 정상 발신자임을 알립니다.",
-        )
-
+def check_kisa_whitedomain(domain: str) -> CheckResult:  # noqa: ARG001
     return CheckResult(
-        name="KISA 화이트도메인",
+        name=_NAME,
         status="warn",
         score=0,
-        message_ko="KISA 화이트도메인에 등록되지 않았습니다",
+        message_ko="KISA 화이트도메인 서비스 종료 (2024년 6월 28일)",
         detail_ko=(
-            "화이트도메인 등록은 한국 ISP(네이버 메일, 카카오 메일)에서의 "
-            "수신율 향상에 도움이 됩니다. 필수는 아니지만 권장합니다."
+            "KISA 화이트도메인 프로그램은 2024년 6월 28일 완전 종료됐습니다. "
+            "등록 신청이나 조회가 더 이상 불가합니다. "
+            "네이버·카카오는 자체 발신자 요건으로 전환했습니다."
         ),
         remediation_ko=(
-            "등록 신청: https://화이트도메인.한국\n"
-            "신청 시 발신 도메인, 발신 IP, 담당자 정보가 필요합니다.\n"
-            "심사 기간: 약 5~10 영업일"
+            "현재 대체 경로:\n"
+            "• 네이버 메일: SPF + DKIM + DMARC + PTR 4가지를 모두 설정하면 "
+            "네이버 2024년 7월 요건을 충족합니다. 차단 시 "
+            "help.naver.com → '스팸 차단 해제 요청' 폼 제출.\n"
+            "• 카카오/Daum 메일: 별도 공개 신청 경로 없음. "
+            "차단 발생 시 카카오 기업 고객센터 개별 문의."
         ),
-    )
-
-
-def _parse_response(html: str, domain: str) -> bool | None:
-    """
-    Returns True if domain is registered, False if not, None if unparseable.
-    Update this function if the KISA whitedomain site structure changes.
-    """
-    html_lower = html.lower()
-    domain_lower = domain.lower()
-
-    # Heuristic: if the domain appears in the response body, it's likely registered.
-    # A more robust implementation would parse the table rows.
-    if "등록되지 않" in html or "no result" in html_lower or "검색 결과가 없" in html:
-        return False
-    if domain_lower in html_lower and ("등록" in html or "registered" in html_lower):
-        return True
-
-    # If the page loaded but we can't determine status, return None
-    return None
-
-
-def _unavailable(reason: str) -> CheckResult:
-    return CheckResult(
-        name="KISA 화이트도메인",
-        status="error",
-        score=0,
-        message_ko=f"KISA 화이트도메인 확인 불가 ({reason})",
-        detail_ko="현재 자동 확인 불가 — KISA 사이트에서 직접 확인하세요: https://spam.kisa.or.kr/white/sub2.do",
     )
