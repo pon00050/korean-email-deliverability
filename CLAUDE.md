@@ -18,13 +18,20 @@
 This includes: `README.md`, `sample/`, `content/` articles, code comments, test fixtures,
 and any file tracked by git (unless it is explicitly gitignored).
 
-- Use `example.co.kr` as the canonical dummy domain in all examples and sample output.
+- Use `example.co.kr` as the canonical dummy domain in all **display** examples and
+  sample output (README, article screenshots, HTML sample report).
 - When a comparison table or multi-domain example is needed, use anonymised labels:
   "세금계산서 SaaS A", "이커머스 B2B SaaS B", etc. — never real brand names.
-- Prospect intelligence files (`content/outreach_emails.md`, `content/target_list.md`)
-  are gitignored and must never be committed.
+- Prospect intelligence files (`content/outreach_emails.md`, `content/target_list.md`,
+  `content/cold_email_template.md`) are gitignored and must never be committed.
 - If real scan data is needed for research or drafting, keep it in a local-only file
   that is covered by `.gitignore` before writing anything.
+
+**Live / end-to-end scan testing must use a real domain.**
+`example.co.kr` has no DNS records and will produce all-fail results, which is useless
+for verifying scanner behaviour. Use `barobill.co.kr` (or any other live `.co.kr` domain
+you have access to) when running `uv run check.py` locally to validate real output.
+Never commit those local run results to a public file.
 
 ## Conventions
 - Korean is the primary language for all user-facing strings (`message_ko`, `detail_ko`, `remediation_ko`).
