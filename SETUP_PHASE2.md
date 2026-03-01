@@ -266,6 +266,12 @@ All 44 tests run in CI on every push to `dev`:
 
 ## Troubleshooting
 
+**App unreachable at the public URL despite a green deploy**
+→ Railway injects `$PORT` automatically — no manual configuration of the PORT
+variable is needed. If the app is not reachable despite a green deploy, check
+the Railway deploy logs for startup exceptions (e.g. a missing env var causing
+an import error). Fix the underlying issue and redeploy.
+
 **Build fails: `uvicorn: command not found`**
 → The start command is missing `uv run`. Railway's Railpack runtime does not
 put the venv on PATH. The correct command is:

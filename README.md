@@ -59,6 +59,13 @@ $ uv run check.py example.co.kr
 | KISA 화이트도메인 | 화이트도메인 등록 여부 |
 | 국제 블랙리스트 | Spamhaus ZEN, Barracuda, SURBL |
 
+## 호스팅 버전 (Hosted)
+
+설치 없이 바로 사용하려면 아래 주소에서 도메인을 입력하세요.
+정기 스캔과 이메일 리포트를 자동으로 받을 수 있습니다.
+
+👉 https://korean-email-deliverability-production.up.railway.app
+
 ## 빠른 시작 (Quickstart)
 
 ### uv (권장)
@@ -104,7 +111,7 @@ uv run check.py <domain> [--dkim-selector <selector>] [--output <path>]
 
 ## 로드맵 (Roadmap)
 
-- [ ] 정기 재검사 + 상태 변경 알림
+- [x] 정기 재검사 + 상태 변경 알림 (호스팅 버전에서 제공)
 - [ ] 도메인 일괄 검사 (CSV 입력)
 - [ ] 카카오/다음 메일 호환성 점수
 - [ ] DMARC 집계 리포트 업로드 + 시각화
