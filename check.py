@@ -4,9 +4,9 @@ kr-email-health — Korean email domain health checker
 
 Usage:
     uv run check.py <domain>
-    uv run check.py ＜실제도메인＞.co.kr
-    uv run check.py ＜실제도메인＞.co.kr --dkim-selector default
-    uv run check.py ＜실제도메인＞.co.kr --output reports/barobill.html
+    uv run check.py example.co.kr
+    uv run check.py example.co.kr --dkim-selector default
+    uv run check.py example.co.kr --output reports/example.html
 """
 
 import argparse
@@ -38,9 +38,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="한국 이메일 도메인 상태 검사기",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="예시: uv run check.py ＜실제도메인＞.co.kr",
+        epilog="예시: uv run check.py example.co.kr",
     )
-    parser.add_argument("domain", help="검사할 도메인 (예: ＜실제도메인＞.co.kr)")
+    parser.add_argument("domain", help="검사할 도메인 (예: example.co.kr)")
     parser.add_argument("--dkim-selector", help="DKIM 셀렉터 (미입력 시 자동 탐지)", default=None)
     parser.add_argument("--output", help="HTML 리포트 저장 경로", default=None)
     args = parser.parse_args()
