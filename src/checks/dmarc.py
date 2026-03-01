@@ -3,6 +3,10 @@ import re
 from src.models import CheckResult
 from src.checks._dns_cache import DNS_TIMEOUT
 
+DMARC_SCORE_REJECT = 100
+DMARC_SCORE_QUARANTINE = 75
+DMARC_SCORE_NONE = 20
+
 
 def check_dmarc(domain: str) -> CheckResult:
     query = f"_dmarc.{domain}"
@@ -28,15 +32,15 @@ def check_dmarc(domain: str) -> CheckResult:
     rua = _tag(record, "rua")
 
     if policy == "reject":
-        score = 100
+        score = DMARC_SCORE_REJECT
         status = "pass"
         message = "DMARC 정책이 reject로 설정되어 있습니다 — 최고 수준의 보호"
     elif policy == "quarantine":
-        score = 75
+        score = DMARC_SCORE_QUARANTINE
         status = "warn"
         message = "DMARC 정책이 quarantine입니다 — reject로 강화를 권장합니다"
     else:  # none
-        score = 20
+        score = DMARC_SCORE_NONE
         status = "warn"
         message = "DMARC가 있지만 p=none (모니터링 전용) — 실제 차단 효과 없음"
 
