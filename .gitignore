@@ -8,3 +8,5 @@ reports/*
 !reports/.gitkeep
 settings.local.json
 /.claude/
+content/outreach_emails.md
+content/target_list.md

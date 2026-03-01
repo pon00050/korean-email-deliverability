@@ -23,29 +23,29 @@
 한국 기업 대상 7가지 검사 + 네이버 메일 호환성 점수.
 
 ```
-$ uv run check.py barobill.co.kr
+$ uv run check.py example.co.kr
 
-🔍 barobill.co.kr 도메인 검사 중...
+🔍 example.co.kr 도메인 검사 중...
 
   ✅   SPF                  SPF 레코드가 올바르게 설정되어 있습니다
   ❌   DKIM                 DKIM 레코드를 찾을 수 없습니다 (자동 탐지 실패)
   ⚠️   DMARC                DMARC가 있지만 p=none (모니터링 전용) — 실제 차단 효과 없음
-  ✅   PTR                  PTR 레코드가 올바르게 설정되어 있습니다 (61.100.186.252 → mail.barobill.co.kr)
+  ⚠️   PTR                  PTR 레코드 없음 — 역방향 DNS 미설정
   ✅   KISA RBL             KISA RBL(한국인터넷진흥원 차단 목록)에 등록되지 않았습니다
-  ⚠️   KISA 화이트도메인     KISA 화이트도메인 확인 불가 (자동 조회 불가 — KISA 사이트 직접 확인 필요)
+  ⚠️   KISA 화이트도메인     KISA 화이트도메인 서비스 종료 (2024년 6월 28일)
   ✅   국제 블랙리스트        주요 국제 블랙리스트에 등록되지 않았습니다
 
 ───────────────────────────────────────────────────────
-  네이버 메일 호환성: 🟡 53/100  보통 — 일부 이메일이 스팸함에 분류될 수 있음
-  전체 점수:         63/100  (C등급)
+  네이버 메일 호환성: 🔴 44/100  미흡 — 네이버 메일 필터링에 걸릴 가능성이 높음
+  전체 점수:         52/100  (D등급)
 ───────────────────────────────────────────────────────
 
-  📄 리포트 저장됨: reports/barobill.co.kr_YYYYMMDD_HHMMSS.html
+  📄 리포트 저장됨: reports/example.co.kr_YYYYMMDD_HHMMSS.html
 ```
 
 ## 샘플 리포트 (Sample Report)
 
-코드 없이 결과물을 바로 확인하려면: [barobill.co.kr 샘플 리포트 보기](https://raw.githack.com/pon00050/korean-email-deliverability/main/sample/barobill.co.kr.html)
+코드 없이 결과물을 바로 확인하려면: [example.co.kr 샘플 리포트 보기](https://raw.githack.com/pon00050/korean-email-deliverability/main/sample/example.co.kr.html)
 
 ## 검사 항목 (Checks)
 
@@ -66,7 +66,7 @@ $ uv run check.py barobill.co.kr
 git clone https://github.com/pon00050/korean-email-deliverability
 cd korean-email-deliverability
 uv sync
-uv run check.py barobill.co.kr
+uv run check.py example.co.kr
 ```
 
 ### pip
@@ -74,10 +74,10 @@ uv run check.py barobill.co.kr
 git clone https://github.com/pon00050/korean-email-deliverability
 cd korean-email-deliverability
 pip install -e .
-python check.py barobill.co.kr
+python check.py example.co.kr
 ```
 
-Output: `reports/barobill.co.kr_YYYYMMDD_HHMMSS.html`
+Output: `reports/example.co.kr_YYYYMMDD_HHMMSS.html`
 
 ## 옵션 (Options)
 

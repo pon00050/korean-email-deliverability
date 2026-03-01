@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>이메일 도메인 상태 보고서 — barobill.co.kr</title>
+<title>이메일 도메인 상태 보고서 — example.co.kr</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
@@ -76,12 +76,12 @@
   <!-- Header -->
   <div class="header">
     <h1>이메일 도메인 상태 보고서</h1>
-    <div class="domain">barobill.co.kr</div>
-    <div class="meta">검사 시각: 2026년 02월 28일 23:18</div>
+    <div class="domain">example.co.kr</div>
+    <div class="meta">검사 시각: 2026년 03월 01일 00:00</div>
     <div class="score-row">
-      <div class="score-circle">C</div>
+      <div class="score-circle">D</div>
       <div class="score-detail">
-        <div class="total">63<span style="font-size:1rem;font-weight:400;opacity:.6">/100</span></div>
+        <div class="total">52<span style="font-size:1rem;font-weight:400;opacity:.6">/100</span></div>
         <div class="label">전체 도메인 건강 점수</div>
       </div>
     </div>
@@ -91,9 +91,9 @@
   <div class="naver-panel">
     <h2>네이버 메일 호환성 점수</h2>
     <div class="naver-score-row">
-      <span class="naver-score-num">🟡 53/100</span>
+      <span class="naver-score-num">🔴 44/100</span>
     </div>
-    <div class="naver-label">보통 — 일부 이메일이 스팸함에 분류될 수 있음</div>
+    <div class="naver-label">미흡 — 네이버 메일 필터링에 걸릴 가능성이 높음</div>
     <div class="naver-disclaimer">
       ⚠ 네이버 메일은 공식 API를 제공하지 않습니다.
       이 점수는 공개된 기술 신호(SPF, DKIM, DMARC, PTR, KISA 화이트도메인)를 기반으로 한 추정값입니다.
@@ -153,13 +153,13 @@
         <tr>
           <td><strong>PTR</strong></td>
           <td>
-            <span class="badge badge-pass">
-              ✅
-              통과
+            <span class="badge badge-warn">
+              ⚠️
+              주의
             </span>
           </td>
-          <td>100/100</td>
-          <td style="font-size:0.85rem;color:#475569">PTR 레코드가 올바르게 설정되어 있습니다 (61.100.186.252 → mail.barobill.co.kr)</td>
+          <td>0/100</td>
+          <td style="font-size:0.85rem;color:#475569">PTR 레코드 없음 — 역방향 DNS 미설정</td>
         </tr>
         
         <tr>
@@ -183,7 +183,7 @@
             </span>
           </td>
           <td>0/100</td>
-          <td style="font-size:0.85rem;color:#475569">KISA 화이트도메인 확인 불가 (자동 조회 불가 — KISA 사이트 직접 확인 필요)</td>
+          <td style="font-size:0.85rem;color:#475569">KISA 화이트도메인 서비스 종료 (2024년 6월 28일)</td>
         </tr>
         
         <tr>
@@ -219,7 +219,7 @@
       
       <div class="detail-section">
         <h4>원시 레코드</h4>
-        <div class="raw-record">v=spf1 ip4:61.100.186.252 ~all</div>
+        <div class="raw-record">v=spf1 ip4:203.0.113.1 ~all</div>
       </div>
       
     </div>
@@ -278,7 +278,7 @@
       
       <div class="detail-section">
         <h4>원시 레코드</h4>
-        <div class="raw-record">v=DMARC1; p=none; rua=mailto:knetdev@knetbiz.com</div>
+        <div class="raw-record">v=DMARC1; p=none; rua=mailto:dmarc@example.co.kr</div>
       </div>
       
     </div>
@@ -287,8 +287,8 @@
   <div class="detail-card">
     <div class="detail-header" onclick="toggle(this)">
       <div>
-        <div class="check-name">✅ PTR</div>
-        <div class="check-msg">PTR 레코드가 올바르게 설정되어 있습니다 (61.100.186.252 → mail.barobill.co.kr)</div>
+        <div class="check-name">⚠️ PTR</div>
+        <div class="check-msg">PTR 레코드 없음 — 역방향 DNS 미설정</div>
       </div>
       <span style="color:#94a3b8;font-size:1.2rem">▼</span>
     </div>
@@ -298,7 +298,7 @@
       
       <div class="detail-section">
         <h4>원시 레코드</h4>
-        <div class="raw-record">61.100.186.252 → mail.barobill.co.kr → 61.100.186.252</div>
+        <div class="raw-record">PTR 레코드 없음</div>
       </div>
       
     </div>
@@ -318,7 +318,7 @@
       
       <div class="detail-section">
         <h4>원시 레코드</h4>
-        <div class="raw-record">Checked IPs: 61.100.186.252</div>
+        <div class="raw-record">Checked IPs: 203.0.113.1</div>
       </div>
       
     </div>
@@ -328,7 +328,7 @@
     <div class="detail-header" onclick="toggle(this)">
       <div>
         <div class="check-name">⚠️ KISA 화이트도메인</div>
-        <div class="check-msg">KISA 화이트도메인 확인 불가 (자동 조회 불가 — KISA 사이트 직접 확인 필요)</div>
+        <div class="check-msg">KISA 화이트도메인 서비스 종료 (2024년 6월 28일)</div>
       </div>
       <span style="color:#94a3b8;font-size:1.2rem">▼</span>
     </div>
@@ -336,7 +336,7 @@
       
       <div class="detail-section">
         <h4>설명</h4>
-        <p>현재 자동 확인 불가 — KISA 사이트에서 직접 확인하세요: https://spam.kisa.or.kr/white/sub2.do</p>
+        <p>KISA 화이트도메인 서비스는 2024년 6월 28일부로 종료되었습니다. 이 항목은 더 이상 적용되지 않습니다.</p>
       </div>
       
       
@@ -358,7 +358,7 @@
       
       <div class="detail-section">
         <h4>원시 레코드</h4>
-        <div class="raw-record">Checked: Spamhaus ZEN, Barracuda BRBL, SURBL | IPs: 61.100.186.252</div>
+        <div class="raw-record">Checked: Spamhaus ZEN, Barracuda BRBL, SURBL | IPs: 203.0.113.1</div>
       </div>
       
     </div>
