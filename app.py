@@ -30,6 +30,7 @@ from fastapi.templating import Jinja2Templates
 from src.db import create_tables, create_subscriber, deactivate_subscriber, get_subscriber_by_token
 from src.emailer import send_scan_report
 from src.scheduler import make_apscheduler_job
+from src.utils import normalize_domain
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -53,21 +54,20 @@ def get_db():
 # ---------------------------------------------------------------------------
 
 _scheduler: BackgroundScheduler | None = None
-_db_conn = None
 _startup_error: str | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _scheduler, _db_conn, _startup_error
+    global _scheduler, _startup_error
     try:
-        _db_conn = get_db()
-        create_tables(_db_conn)
-        logger.info("Database connection established")
+        with get_db() as _init_conn:
+            create_tables(_init_conn)
+        logger.info("Database tables ready")
 
         _scheduler = BackgroundScheduler()
         _scheduler.add_job(
-            make_apscheduler_job(_db_conn),
+            make_apscheduler_job(get_db),
             "interval",
             minutes=5,
             id="scan_job",
@@ -83,8 +83,6 @@ async def lifespan(app: FastAPI):
 
     if _scheduler and _scheduler.running:
         _scheduler.shutdown(wait=False)
-    if _db_conn:
-        _db_conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -109,19 +107,42 @@ async def health():
     return {"status": "ok"}
 
 
+MIN_INTERVAL_HOURS = 1
+MAX_INTERVAL_HOURS = 8760  # 1 year
+
+
+def _validate_subscribe_input(
+    domain: str, email: str, interval_hours: int
+) -> str | None:
+    """Return an error message string if input is invalid, else None."""
+    if not domain or "." not in domain:
+        return "유효한 도메인을 입력해 주세요 (예: example.co.kr)."
+    at_pos = email.find("@")
+    if at_pos < 1 or "." not in email[at_pos:]:
+        return "유효한 이메일 주소를 입력해 주세요."
+    if not (MIN_INTERVAL_HOURS <= interval_hours <= MAX_INTERVAL_HOURS):
+        return f"스캔 주기는 {MIN_INTERVAL_HOURS}시간에서 {MAX_INTERVAL_HOURS}시간 사이여야 합니다."
+    return None
+
+
 @app.get("/", response_class=HTMLResponse)
 async def signup_page(request: Request):
-    return templates.TemplateResponse("signup.html", {"request": request})
+    return templates.TemplateResponse(request, "signup.html", {})
 
 
 @app.post("/subscribe", response_class=HTMLResponse)
 async def subscribe(
     request: Request,
-    domain: Annotated[str, Form()],
-    email: Annotated[str, Form()],
+    domain: Annotated[str, Form()] = "",
+    email: Annotated[str, Form()] = "",
     interval_hours: Annotated[int, Form()] = 168,
 ):
-    domain = domain.strip().lower().removeprefix("https://").removeprefix("http://").rstrip("/")
+    domain = normalize_domain(domain)
+    email = email.strip()
+
+    error = _validate_subscribe_input(domain, email, interval_hours)
+    if error:
+        return templates.TemplateResponse(request, "signup.html", {"error": error})
 
     conn = get_db()
     try:
@@ -137,9 +158,9 @@ async def subscribe(
     ).start()
 
     return templates.TemplateResponse(
+        request,
         "signup.html",
         {
-            "request": request,
             "success": True,
             "domain": domain,
             "email": email,
@@ -151,8 +172,9 @@ async def subscribe(
 async def unsubscribe(request: Request, token: str = ""):
     if not token:
         return templates.TemplateResponse(
+            request,
             "signup.html",
-            {"request": request, "error": "유효하지 않은 구독 취소 링크입니다."},
+            {"error": "유효하지 않은 구독 취소 링크입니다."},
         )
     conn = get_db()
     try:
@@ -166,9 +188,9 @@ async def unsubscribe(request: Request, token: str = ""):
         conn.close()
 
     return templates.TemplateResponse(
+        request,
         "signup.html",
         {
-            "request": request,
             "unsubscribed": True,
             "domain": domain,
         },

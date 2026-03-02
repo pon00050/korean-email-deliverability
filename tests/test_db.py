@@ -4,7 +4,6 @@ All tests use an in-memory SQLite database (via the db module's connection
 factory) so they run without a live PostgreSQL instance in CI.
 The db module must accept a DSN override for testing.
 """
-import secrets
 from datetime import datetime, timezone, timedelta
 
 import pytest
@@ -19,20 +18,7 @@ from src.db import (
 )
 
 
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-@pytest.fixture
-def conn():
-    """Return a fresh in-memory SQLite connection with schema applied."""
-    import sqlite3
-    c = sqlite3.connect(":memory:", detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES)
-    c.row_factory = sqlite3.Row
-    create_tables(c)
-    yield c
-    c.close()
-
+# conn fixture is in tests/conftest.py
 
 # ---------------------------------------------------------------------------
 # create_subscriber

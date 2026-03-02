@@ -106,6 +106,19 @@ def test_send_scan_report_calls_resend(monkeypatch):
     assert "<html" in call_kwargs["html"].lower()
 
 
+def test_render_email_report_missing_grade_defaults_to_F():
+    scores = {"overall": 40, "naver": 30, "naver_label": "주의"}  # no "grade"
+    html = render_email_report("example.co.kr", [], scores)
+    assert isinstance(html, str)
+    assert "#dc2626" in html  # F grade color (red)
+
+
+def test_render_email_report_missing_overall_defaults_to_zero():
+    scores = {"grade": "D", "naver": 30, "naver_label": "주의"}  # no "overall"
+    html = render_email_report("example.co.kr", [], scores)
+    assert "0" in html
+
+
 def test_send_scan_report_subject_contains_grade(monkeypatch):
     mock_send = MagicMock(return_value=MagicMock(id="x"))
     monkeypatch.setattr("src.emailer.resend.Emails.send", mock_send)

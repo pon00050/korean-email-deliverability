@@ -55,6 +55,12 @@ class _NoCloseConn:
     def close(self):
         pass  # intentional no-op
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass  # intentional no-op — keep underlying connection open for test inspection
+
     def __getattr__(self, name):
         return getattr(self._conn, name)
 
@@ -172,3 +178,27 @@ def test_unsubscribe_with_unknown_token_returns_200(client):
     c, _ = client
     resp = c.get("/unsubscribe?token=notarealtoken")
     assert resp.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# POST /subscribe — input validation
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize(
+    "form_data,expected_keyword",
+    [
+        ({"domain": "", "email": "u@example.com"}, "도메인"),
+        ({"domain": "localhost", "email": "u@example.com"}, "도메인"),
+        ({"domain": "example.co.kr", "email": "notanemail"}, "이메일"),
+        ({"domain": "example.co.kr", "email": "user@nodot"}, "이메일"),
+        ({"domain": "example.co.kr", "email": "u@example.com", "interval_hours": 0}, "스캔 주기"),
+        ({"domain": "example.co.kr", "email": "u@example.com", "interval_hours": 9000}, "스캔 주기"),
+    ],
+)
+def test_subscribe_rejects_invalid_input(client, form_data, expected_keyword):
+    c, conn = client
+    resp = c.post("/subscribe", data=form_data)
+    assert resp.status_code == 200
+    assert expected_keyword in resp.text
+    row = conn.execute("SELECT * FROM subscribers").fetchone()
+    assert row is None
