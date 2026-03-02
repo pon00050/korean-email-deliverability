@@ -71,6 +71,7 @@ async def lifespan(app: FastAPI):
             "interval",
             minutes=5,
             id="scan_job",
+            max_instances=1,
         )
         _scheduler.start()
         logger.info("Scheduler started")

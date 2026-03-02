@@ -89,7 +89,7 @@ def make_apscheduler_job(conn, scan_executor=None, email_sender=None):
     return job
 
 
-def _default_scan_executor(domain: str) -> tuple[list, dict]:
+def _default_scan_executor(domain: str) -> tuple[list[CheckResult], dict[str, Any]]:
     """Run the full check pipeline and return (results, scores)."""
     from concurrent.futures import ThreadPoolExecutor
     from src.checks import (
