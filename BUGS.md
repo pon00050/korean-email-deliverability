@@ -125,6 +125,37 @@ subscribe success HTML, subscribe invalid input ×6, unsubscribe valid/missing/u
 
 ---
 
+## 2026-03-02 — GRADE_THRESHOLDS: C/D 등급 경계 오류 (ship-blocking)
+
+**Symptom:** 점수 45점 도메인이 스펙상 D등급이어야 하는데 C등급으로 표시됨.
+점수 39점 도메인이 스펙상 F등급이어야 하는데 D등급으로 표시됨.
+
+**Root cause:** `src/scorer.py`의 `GRADE_THRESHOLDS`가 잘못된 임계값을 사용했다.
+
+| 등급 | 스펙 (CLAUDE.md) | 코드 (버그) |
+|------|------------------|-------------|
+| C    | ≥ 60             | ≥ 50        |
+| D    | ≥ 40             | ≥ 25        |
+
+```python
+# 버그
+GRADE_THRESHOLDS = [(90, "A"), (75, "B"), (50, "C"), (25, "D")]
+# 수정
+GRADE_THRESHOLDS = [(90, "A"), (75, "B"), (60, "C"), (40, "D")]
+```
+
+**Discovery:** Pre-Phase3 위험 평가 작업 중 `tests/test_scorer.py` T1 작성 시 발견.
+기존 테스트 없이 코드가 무검증으로 배포되었다.
+
+**Fix:** `GRADE_THRESHOLDS`의 C 임계값 50 → 60, D 임계값 25 → 40으로 수정.
+
+**Files changed:** `src/scorer.py`
+
+**Tests added:** `tests/test_scorer.py::test_grade_boundaries` — 10개 parametrize 케이스
+로 모든 경계값(A/B/C/D/F 각 상하한) 전수 검증.
+
+---
+
 ## 2026-03-02 — Pre-Phase3 일관성 감사: 7가지 코드베이스 불일치
 
 Phase 3 착수 전 수동 감사에서 발견된 7개 항목. 각각 독립적이나 묶어서 수정하였다.

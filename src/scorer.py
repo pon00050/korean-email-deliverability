@@ -20,8 +20,8 @@ from src.models import CheckResult
 GRADE_THRESHOLDS: list[tuple[int, str]] = [
     (90, "A"),
     (75, "B"),
-    (50, "C"),
-    (25, "D"),
+    (60, "C"),
+    (40, "D"),
 ]
 
 # Naver compatibility label thresholds
@@ -34,6 +34,10 @@ WEIGHTS: dict[str, int] = {
     "DMARC": 25,
     "PTR": 10,
     "KISA RBL": 15,
+    # KISA 화이트도메인 service was terminated June 2024. The check returns
+    # status="error", which causes overall_score() to exclude this weight from
+    # the denominator — so 100/100 is still achievable. The entry is kept here
+    # so the weights sum to 100 and the error-exclusion scaling works correctly.
     "KISA 화이트도메인": 5,
     "국제 블랙리스트": 10,
 }
