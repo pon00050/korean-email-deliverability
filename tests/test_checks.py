@@ -140,6 +140,18 @@ class TestScorer:
         assert naver_score(results) == 100
 
 
+# ─── PTR ──────────────────────────────────────────────────────────────────────
+
+class TestPTR:
+    def test_no_mx_returns_fail(self):
+        """Missing MX records should return status='fail', not 'warn'."""
+        from src.checks.ptr import check_ptr
+        with patch("dns.resolver.resolve", side_effect=dns.resolver.NXDOMAIN):
+            r = check_ptr("example.co.kr")
+        assert r.status == "fail"
+        assert r.score == 0
+
+
 # ─── Blacklists ───────────────────────────────────────────────────────────────
 
 class TestBlacklists:

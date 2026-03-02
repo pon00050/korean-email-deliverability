@@ -3,7 +3,7 @@ Tests for KISA 화이트도메인 check.
 
 The service was terminated June 28, 2024. The check must:
 - Return immediately without making any network request
-- Report status="warn" (service gone, not actionable)
+- Report status="error" (service gone, not actionable — excluded from scoring)
 - Message must reference the 2024 termination
 - Remediation must point to Naver/Kakao individual paths, NOT the defunct KISA URL
 - Must NOT reference spam.kisa.or.kr/white or 화이트도메인.한국 in remediation
@@ -15,12 +15,12 @@ import pytest
 from src.checks.kisa_whitedomain import check_kisa_whitedomain
 
 
-def test_returns_warn_without_network_call():
+def test_returns_error_without_network_call():
     """Check must not make any HTTP request — service is terminated."""
     with patch("requests.get") as mock_get:
         result = check_kisa_whitedomain("example.co.kr")
         mock_get.assert_not_called()
-    assert result.status == "warn"
+    assert result.status == "error"
 
 
 def test_message_references_termination():

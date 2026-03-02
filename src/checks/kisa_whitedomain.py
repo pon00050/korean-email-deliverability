@@ -11,8 +11,10 @@ KISA formally ended the 화이트도메인 program:
 The replacement path is individual compliance with Naver and Kakao bulk sender
 requirements (SPF + DKIM + DMARC + PTR), which Naver made mandatory July 19, 2024.
 
-No network request is made. The check returns a static warn result explaining
+No network request is made. The check returns a static error result explaining
 the termination and directing users to the current Naver/Kakao paths.
+status="error" causes the scorer to exclude this check's weight, allowing
+a perfect 100/100 score to be achievable for domains with all other checks passing.
 
 Source: Thundermail 화이트도메인 서비스 종료 안내 (blog.thundermail.co.kr/366)
 """
@@ -25,7 +27,7 @@ _NAME = "KISA 화이트도메인"
 def check_kisa_whitedomain(domain: str) -> CheckResult:  # noqa: ARG001
     return CheckResult(
         name=_NAME,
-        status="warn",
+        status="error",
         score=0,
         message_ko="KISA 화이트도메인 서비스 종료 (2024년 6월 28일)",
         detail_ko=(

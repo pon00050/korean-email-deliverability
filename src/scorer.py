@@ -39,6 +39,7 @@ WEIGHTS: dict[str, int] = {
 }
 
 # Naver score weights (independent composite, sums to 100 internally)
+# KISA RBL and 국제 블랙리스트 excluded — Naver filtering is independent of these zones
 NAVER_WEIGHTS: dict[str, int] = {
     "SPF": 25,
     "DKIM": 20,

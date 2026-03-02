@@ -21,15 +21,12 @@ def check_ptr(domain: str) -> CheckResult:
     except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
         return CheckResult(
             name="PTR",
-            status="warn",
+            status="fail",
             score=0,
             message_ko="MX 레코드가 없습니다 — 이메일 수신 설정이 되어 있지 않습니다",
         )
     except Exception as e:
         return CheckResult(name="PTR", status="error", score=0, message_ko=f"MX 조회 오류: {e}")
-
-    if not mx_hosts:
-        return CheckResult(name="PTR", status="fail", score=0, message_ko="MX 레코드가 없습니다")
 
     # Check the primary (lowest preference) MX host
     _, mx_host = mx_hosts[0]
