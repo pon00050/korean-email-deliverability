@@ -16,7 +16,7 @@ from src.checks._dns_cache import get_sending_ips, DNS_TIMEOUT
 
 KISA_RBL_ZONE = "rbl.kisa.or.kr"
 KISA_RBL_SCORE_PASS = 100
-KISA_RBL_SCORE_ERROR = 50   # inconclusive: can't resolve sending IPs
+KISA_RBL_SCORE_ERROR = 0    # error status is excluded from scoring by src/scorer.py; value is informational only
 KISA_RBL_SCORE_FAIL = 0
 
 

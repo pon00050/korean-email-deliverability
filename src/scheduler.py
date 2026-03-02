@@ -19,6 +19,7 @@ import logging
 from typing import Any, Callable
 
 from src.db import get_due_subscribers, update_next_scan
+from src.models import CheckResult
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 def run_due_scans(
     conn,
     *,
-    scan_executor: Callable[[str], tuple[list, dict]],
+    scan_executor: Callable[[str], tuple[list[CheckResult], dict[str, Any]]],
     email_sender: Callable[..., None],
 ) -> None:
     """Fetch subscribers whose next_scan_at has passed and run scans for each.
