@@ -32,6 +32,7 @@ from src.checks import (
 )
 from src.scorer import overall_score, naver_score, grade, naver_label, status_emoji
 from src.report import generate_report
+from src.utils import normalize_domain
 
 
 def main() -> None:
@@ -45,7 +46,7 @@ def main() -> None:
     parser.add_argument("--output", help="HTML 리포트 저장 경로", default=None)
     args = parser.parse_args()
 
-    domain = args.domain.strip().lower().removeprefix("https://").removeprefix("http://").rstrip("/")
+    domain = normalize_domain(args.domain)
 
     print(f"\n🔍 {domain} 도메인 검사 중...\n")
 

@@ -94,6 +94,214 @@ Ran `uv sync --extra dev` to update `uv.lock` and committed both files.
 
 ---
 
+## 2026-03-02 — Scheduler 중복 실행: `max_instances=1` 누락 및 라우트 테스트 부재
+
+**Symptom (잠재적):** 5분 주기 스케줄러 잡이 이전 실행이 아직 끝나지 않은 상태에서
+다시 실행될 수 있었다. 구독자 수가 늘거나 DNS 조회가 느려지면 동일 구독자에 대해
+이메일이 중복 발송되고 `next_scan_at`이 두 번 갱신될 위험이 있었다.
+
+**Root cause:** `scheduler.add_job()` 호출에 `max_instances` 인자가 없었다.
+APScheduler 기본값은 `max_instances=1`이 아닌 `max_instances=3`으로,
+중복 실행을 허용한다.
+
+**Fix:**
+- `app.py`: `scheduler.add_job(..., max_instances=1)` 추가 — 이전 잡이 실행 중이면
+  다음 트리거는 건너뜀.
+- `src/scheduler.py`: `_default_scan_executor` 반환 타입 힌트를 `tuple[list, dict]`
+  → `tuple[list[CheckResult], dict[str, Any]]`로 정밀화 (동일 커밋).
+- `tests/test_routes.py` (신규): FastAPI 라우트 전체를 in-memory SQLite로 커버하는
+  테스트 파일 추가. psycopg는 CI 환경에 libpq 없음을 고려해 import 시점에 stub 처리.
+  `_NoCloseConn` 래퍼로 테스트가 공유하는 SQLite 커넥션이 라우트 핸들러에 의해
+  닫히지 않도록 보호.
+- `tests/test_scheduler.py`: 스캔 중 예외 발생 시에도 `next_scan_at`이 갱신되는지
+  확인하는 테스트 추가.
+
+**Files changed:** `app.py`, `src/scheduler.py`, `tests/test_routes.py` (new),
+`tests/test_scheduler.py`
+
+**Tests added:** `test_routes.py` — 14개 (health, signup, subscribe strips URL prefix,
+subscribe success HTML, subscribe invalid input ×6, unsubscribe valid/missing/unknown token);
+`test_scheduler.py` — `test_run_due_scans_advances_next_scan_at_even_on_exception`. 총 38 → 45개.
+
+---
+
+## 2026-03-02 — Pre-Phase3 일관성 감사: 7가지 코드베이스 불일치
+
+Phase 3 착수 전 수동 감사에서 발견된 7개 항목. 각각 독립적이나 묶어서 수정하였다.
+
+---
+
+### 1. KISA 화이트도메인: `status="warn"` → `"error"` — 100점 달성 불가 버그
+
+**Symptom:** 모든 다른 검사를 통과해도 전체 점수가 최대 95/100으로 고정되었다.
+KISA 화이트도메인의 weight 5점이 항상 차감되었다.
+
+**Root cause:** 서비스 종료로 인해 검사 결과가 항상 `status="warn"`이었는데,
+`src/scorer.py`는 `"error"` 상태만 weight 계산에서 제외한다. `"warn"`은 `score=0`인
+채로 포함되어 5점이 감점되었다.
+
+**Fix:** `check_kisa_whitedomain()` 반환값을 `status="error"`로 변경.
+`"error"` 상태는 scorer에서 제외되어 weight 5점이 분모에서도 빠진다.
+모듈 docstring에 설계 의도 명시. `tests/test_kisa_whitedomain.py` 어서션 일괄 수정.
+
+**Files changed:** `src/checks/kisa_whitedomain.py`, `tests/test_kisa_whitedomain.py`
+
+**Tests added:** 기존 테스트 어서션 `warn` → `error` 수정 (새 케이스 없음).
+
+---
+
+### 2. PTR: MX 없음 시 `status="warn"` → `"fail"` 및 도달 불가 코드 제거
+
+**Symptom:** MX 레코드가 없는 도메인이 PTR 검사에서 `"warn"`을 반환했다.
+SPF/DMARC 등 다른 검사들이 동일 조건에서 `"fail"`을 반환하는 것과 불일치.
+
+**Root cause:** `NXDOMAIN`/`NoAnswer` 예외 처리 블록이 `status="warn"`을 반환했다.
+또한 그 아래 `if not mx_hosts:` 분기가 존재했으나, 빈 MX 목록은 예외 전에
+`NXDOMAIN`으로 처리되므로 실제로는 도달 불가능한 dead code였다.
+
+**Fix:** `status="warn"` → `status="fail"`. `if not mx_hosts:` 블록 제거.
+
+**Files changed:** `src/checks/ptr.py`
+
+**Tests added:** `tests/test_checks.py::TestPTR::test_no_mx_returns_fail`.
+
+---
+
+### 3. KISA RBL: `KISA_RBL_SCORE_ERROR = 50` → `0`
+
+**Symptom (잠재적):** `KISA_RBL_SCORE_ERROR = 50` 상수가 오해를 유발. scorer는
+`"error"` 상태 검사를 계산에서 제외하므로 이 값은 실제로 점수에 반영되지 않는다.
+미래 개발자가 이 상수를 실제 점수로 오해할 위험이 있었다.
+
+**Fix:** `KISA_RBL_SCORE_ERROR = 0`으로 변경하고 "scorer에 의해 사용되지 않음"
+주석 추가.
+
+**Files changed:** `src/checks/kisa_rbl.py`
+
+**Tests added:** 없음.
+
+---
+
+### 4. DKIM: 상수명 `DKIM_WEAK_KEY_SCORE` → `DKIM_SCORE_WEAK_KEY`
+
+**Symptom:** DKIM 모듈의 상수명이 프로젝트 명명 규칙(`<CHECK>_SCORE_<CONDITION>`)을
+따르지 않았다.
+
+**Fix:** 상수 선언 및 사용처 일괄 rename.
+
+**Files changed:** `src/checks/dkim.py`
+
+**Tests added:** 없음.
+
+---
+
+### 5. Scheduler: `scan_executor` 타입 힌트 정밀화
+
+**Symptom:** `run_due_scans`의 `scan_executor` 파라미터 타입이 `tuple[list, dict]`로
+제네릭 없이 선언되어 있었다.
+
+**Fix:** `tuple[list[CheckResult], dict[str, Any]]`로 정밀화. `CheckResult` import 추가.
+
+**Files changed:** `src/scheduler.py`
+
+**Tests added:** 없음.
+
+---
+
+### 6. Scorer: `NAVER_WEIGHTS` 설계 근거 주석 추가
+
+**Symptom:** `NAVER_WEIGHTS`에서 KISA RBL과 국제 블랙리스트가 제외된 이유가
+코드에 명시되지 않았다.
+
+**Fix:** "Naver filtering is independent of these zones" 근거 주석 추가.
+
+**Files changed:** `src/scorer.py`
+
+**Tests added:** 없음.
+
+---
+
+**Overall test count after f95dd51:** 38 → 45개.
+
+---
+
+## 2026-03-02 — Phase 2 Post-Cleanup: 3가지 잠재 장애 선제 수정
+
+세 항목은 기능 버그가 아닌 운영 위험(operational risk)으로 분류되어
+실제 장애가 발생하기 전에 선제적으로 수정하였다.
+
+---
+
+### 1. Scheduler stale connection — Railway 재시작 시 스캐너 묵묵히 실패
+
+**Symptom (잠재적):** APScheduler가 앱 시작 시 생성된 단일 `psycopg` 커넥션을
+앱 전체 수명 동안 보유한다. Railway가 Postgres를 재시작하거나 유휴 커넥션 타임아웃이
+발생하면, 이후 5분 주기 스케줄러 실행이 모두 `OperationalError`로 실패하며
+이메일은 전송되지 않는다. 로그에만 남고 사용자는 알 수 없다.
+
+**Root cause:** `make_apscheduler_job(conn)`이 잡 생성 시점의 커넥션 객체를 클로저에
+캡처한다. 해당 커넥션이 이후 끊어져도 교체 수단이 없다.
+
+**Fix:**
+- `make_apscheduler_job(conn)` → `make_apscheduler_job(conn_factory)` 로 시그니처 변경.
+  `conn_factory`는 매 호출마다 새 커넥션을 반환하는 callable (= `get_db`).
+- job 클로저 내부: 매 실행마다 `conn = conn_factory()` 후 `try/finally: conn.close()`.
+  요청 핸들러가 이미 동일 패턴을 사용하고 있어 5분당 커넥션 1개 추가는 무시 가능한 수준.
+- `app.py` lifespan: `_db_conn = get_db()` + `create_tables(_db_conn)` →
+  `with get_db() as _init_conn: create_tables(_init_conn)` (종료 시 자동 close).
+  `make_apscheduler_job(get_db)` 로 팩토리 전달. `_db_conn` 전역 변수 제거.
+- `tests/test_routes.py`: `_NoCloseConn`에 `__enter__`/`__exit__` 추가 —
+  lifespan의 `with get_db()` 패턴이 테스트 픽스처와도 작동하도록.
+
+**Files changed:** `src/scheduler.py`, `app.py`, `tests/test_routes.py`
+
+**Tests added:** 없음 — `test_scheduler.py`는 `run_due_scans`를 직접 테스트하며
+커넥션 팩토리 레이어를 거치지 않음. 기존 67개 테스트 전부 통과.
+
+---
+
+### 2. `normalize_domain()` 중복 — 3번째 호출자 전에 추출
+
+**Symptom (잠재적):** 동일한 `.strip().lower().removeprefix("https://")...` 체인이
+`app.py:142`와 `check.py:48`에 각각 독립적으로 존재한다. 로직 변경 시 한 곳만
+수정하면 두 진입점의 동작이 달라진다.
+
+**Root cause:** Phase 1(`check.py`)에서 인라인으로 작성된 코드가 Phase 2(`app.py`)
+개발 시 그대로 복사되었다. 공통 유틸리티 모듈이 없었다.
+
+**Fix:**
+- `src/utils.py` (신규): `normalize_domain(raw: str) -> str` 함수 한 곳에 정의.
+- `app.py`, `check.py`: 인라인 체인을 `normalize_domain()` 호출로 교체.
+
+**Files changed:** `src/utils.py` (new), `app.py`, `check.py`
+
+**Tests added:** `tests/test_utils.py` (신규) — 4개 parametrize 케이스:
+공백 포함, `https://` 접두사, `http://` 접두사, 순수 도메인.
+
+---
+
+### 3. `render_email_report` missing-key 폴백 미검증
+
+**Symptom (잠재적):** `render_email_report`는 `scores` 딕트의 `"grade"` 키 부재 시
+`"F"`로, `"overall"` 부재 시 `0`으로 폴백하도록 `.get()` 을 사용한다.
+그러나 이 경로를 테스트하는 코드가 없어, `scores` 딕트가 잘못 구성된 버그가
+발생해도 잘못된 내용의 이메일이 조용히 발송된다.
+
+**Root cause:** `render_email_report` 작성 시 방어적 `.get()` 폴백을 추가했으나
+대응하는 테스트가 누락되었다.
+
+**Fix:** 두 폴백 경로를 각각 커버하는 테스트 추가:
+- `test_render_email_report_missing_grade_defaults_to_F`: `scores`에 `"grade"` 없음 →
+  렌더링 결과에 F등급 색상 `#dc2626` 포함 확인.
+- `test_render_email_report_missing_overall_defaults_to_zero`: `scores`에 `"overall"` 없음 →
+  렌더링 결과에 `"0"` 포함 확인.
+
+**Files changed:** `tests/test_emailer.py`
+
+**Tests added:** 위 2개 (총 테스트 수: 45 → 67).
+
+---
+
 ## 2026-02-28 — KISA 화이트도메인: "응답 파싱 실패" 표시 오류
 
 **Symptom:** Live scan of `barobill.co.kr` showed "응답 파싱 실패 — 사이트 구조가 변경되었을 수 있습니다"

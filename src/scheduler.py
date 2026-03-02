@@ -7,9 +7,10 @@ with a mock executor and email sender.
 Production wiring (in app.py):
     from apscheduler.schedulers.background import BackgroundScheduler
     from src.scheduler import make_apscheduler_job
+    from src.db import get_db
 
     scheduler = BackgroundScheduler()
-    scheduler.add_job(make_apscheduler_job(db_conn), "interval", minutes=5)
+    scheduler.add_job(make_apscheduler_job(get_db), "interval", minutes=5)
     scheduler.start()
 """
 
@@ -75,8 +76,16 @@ def _get_base_url() -> str:
     return os.environ.get("BASE_URL", "http://localhost:8000")
 
 
-def make_apscheduler_job(conn, scan_executor=None, email_sender=None):
-    """Return a zero-argument callable suitable for APScheduler."""
+def make_apscheduler_job(conn_factory, scan_executor=None, email_sender=None):
+    """Return a zero-argument callable suitable for APScheduler.
+
+    Args:
+        conn_factory: Zero-argument callable that returns a new DB connection.
+            A fresh connection is opened and closed on every run, avoiding
+            stale-connection failures caused by Postgres restarts or idle timeouts.
+        scan_executor: Optional override for the scan function.
+        email_sender: Optional override for the email send function.
+    """
     if scan_executor is None:
         scan_executor = _default_scan_executor
     if email_sender is None:
@@ -84,7 +93,11 @@ def make_apscheduler_job(conn, scan_executor=None, email_sender=None):
         email_sender = send_scan_report
 
     def job():
-        run_due_scans(conn, scan_executor=scan_executor, email_sender=email_sender)
+        conn = conn_factory()
+        try:
+            run_due_scans(conn, scan_executor=scan_executor, email_sender=email_sender)
+        finally:
+            conn.close()
 
     return job
 

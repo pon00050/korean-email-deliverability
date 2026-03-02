@@ -8,6 +8,7 @@ Environment variables required at runtime:
     FROM_EMAIL      — Verified sender address
 """
 
+import logging
 import os
 from pathlib import Path
 from typing import Any
@@ -16,6 +17,8 @@ import resend
 from jinja2 import Environment, FileSystemLoader
 
 from src.models import CheckResult
+
+_logger = logging.getLogger(__name__)
 
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates"
 
@@ -65,9 +68,16 @@ def send_scan_report(
     overall = scores.get("overall", 0)
     subject = f"[이메일 건강도] {domain} — {overall}/100 ({grade}등급)"
 
-    resend.Emails.send({
-        "from": from_email,
-        "to": [to_email],
-        "subject": subject,
-        "html": html,
-    })
+    try:
+        resend.Emails.send({
+            "from": from_email,
+            "to": [to_email],
+            "subject": subject,
+            "html": html,
+        })
+    except Exception as exc:
+        _logger.error(
+            "Resend API call failed for recipient=%s domain=%s: %s",
+            to_email, domain, exc,
+        )
+        raise
