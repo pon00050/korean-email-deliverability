@@ -11,6 +11,8 @@
 - Run tests: `uv run pytest tests/ -v`
 - Run scan: `uv run check.py <domain>`
 - Install deps: `uv sync --extra dev`
+- E2E scan (use a real domain — see Privacy rules): `uv run check.py barobill.co.kr`
+  Expected: all 7 checks complete in <15s, HTML report saved to `reports/`
 
 ## Privacy — No Real Company Data in Public Files
 
@@ -45,6 +47,8 @@ Never commit those local run results to a public file.
   call. Multiple independent DNS queries within a single check must use `ThreadPoolExecutor`.
   Top-level check execution in `check.py` must use `ThreadPoolExecutor`. Never add a
   sequential loop over DNS queries without justification.
+  `get_sending_ips()` (in `src/checks/_dns_cache.py`) caps results to
+  `_MAX_IPS = 3` IPs per domain. RBL and blacklist checks only test these IPs.
 
 ## Adding a New Check
 

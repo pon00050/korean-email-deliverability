@@ -111,6 +111,9 @@ Weights are defined in `src/scorer.py` and must sum to 100:
 | 국제 블랙리스트     | 10     | Global reputation; affects non-Korean mailboxes        |
 | KISA 화이트도메인   | 5      | Beneficial but not blocking; most domains unregistered |
 
+> **Source of truth:** `WEIGHTS` dict in `src/scorer.py`. The table above mirrors
+> it for reference — update scorer.py first if weights change.
+
 ### The Error Exclusion Rule
 
 When a check returns `status="error"` (infrastructure problem — not the
