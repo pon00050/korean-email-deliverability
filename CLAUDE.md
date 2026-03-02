@@ -46,6 +46,43 @@ Never commit those local run results to a public file.
   Top-level check execution in `check.py` must use `ThreadPoolExecutor`. Never add a
   sequential loop over DNS queries without justification.
 
+## Adding a New Check
+
+Seven steps, in order. Missing any one will cause a silent failure.
+
+1. **Create `src/checks/<name>.py`**
+   - Return `CheckResult` with `name` matching the string you'll use in `WEIGHTS`
+   - Apply `lifetime=DNS_TIMEOUT` to every `dns.resolver.resolve()` call
+   - Parallelize independent DNS queries with `ThreadPoolExecutor`
+
+2. **Export from `src/checks/__init__.py`**
+   - Add `from src.checks.<name> import check_<name>`
+
+3. **Add to `WEIGHTS` in `src/scorer.py`**
+   - Adjust other weights so the dict still sums to 100
+   - Add rationale comment
+
+4. **Wire into `check.py`**
+   - Add `check_<name>` to the checkers list submitted to `ThreadPoolExecutor`
+
+5. **Wire into `src/scheduler.py`**
+   - Add `check_<name>` to the checkers list inside `_default_scan_executor()`
+
+6. **Update `tests/test_integration_scan_pipeline.py`**
+   - Add the new check to the `checkers` list in `_run_all_checks()`
+   - Add a matching DNS response branch to `_all_pass_resolve()` or the
+     test will silently score < 100 on the all-pass scenario (T2, T4)
+
+7. **Write unit tests**
+   - Add a test class to `tests/test_check_spf_dmarc_ptr_blacklists.py`
+     (or create a new file for larger checks)
+   - Mock `dns.resolver.resolve` via `patch("dns.resolver.resolve", ...)`
+   - If the check calls `get_sending_ips`, patch it at the module level:
+     `patch("src.checks.<name>.get_sending_ips", ...)` — NOT at the source
+     (`src.checks._dns_cache.get_sending_ips`) since the name is already bound
+
+Run `python -m pytest tests/ -v` and verify the count increases by at least 3.
+
 ## Scoring
 
 Overall score weights (defined in `src/scorer.py`, must sum to 100):
