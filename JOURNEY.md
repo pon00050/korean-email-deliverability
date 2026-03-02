@@ -133,6 +133,13 @@ to prevent double-counting.
 Defined as `GRADE_THRESHOLDS` in `src/scorer.py`:
 `A (90+)`, `B (75–89)`, `C (60–74)`, `D (40–59)`, `F (<40)`.
 
+### Terminal Display Note
+
+`status_emoji()` in `src/scorer.py` maps both `"warn"` and `"error"` to `⚠️`.
+A `⚠️` in CLI output does **not** mean the check returned `warn` — it may be
+`error` (e.g. `kisa_whitedomain`). Always check `result.status` directly if
+the distinction matters (e.g. when debugging scorer weight exclusion).
+
 ---
 
 ## Act 5 — The Data Model
@@ -164,9 +171,9 @@ found in DNS without re-querying.
 1. Accepts a domain argument
 2. Runs all eight checks in parallel via `ThreadPoolExecutor`
 3. Passes results to `src/scorer.py` to compute overall + Naver scores
-4. Passes everything to `src/reporter.py` to render a self-contained HTML file
+4. Passes everything to `src/report.py` to render a self-contained HTML file
 
-The HTML report is generated from a Jinja2 template (`templates/report.html`).
+The HTML report is generated from a Jinja2 template (`templates/report.html.j2`).
 It is designed to be a single file with all styles inlined — no external
 dependencies, shareable by email attachment.
 
