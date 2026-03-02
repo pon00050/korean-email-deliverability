@@ -126,8 +126,8 @@ def test_run_due_scans_advances_next_scan_at_even_on_exception(conn):
     assert abs((next_scan - expected).total_seconds()) < 10
 
 
-def test_run_due_scans_advances_next_scan_at_on_email_failure(conn, caplog):
-    """next_scan_at must advance even when email_sender raises."""
+def test_email_failure_scan_still_executes_and_advances_schedule(conn, caplog):
+    """email_sender raises → scan ran, schedule advanced, no exception propagates, error logged."""
     import logging
 
     sub_id = create_subscriber(conn, domain="example.co.kr", email="t@t.com", interval_hours=24)
@@ -145,7 +145,10 @@ def test_run_due_scans_advances_next_scan_at_on_email_failure(conn, caplog):
     with caplog.at_level(logging.ERROR):
         run_due_scans(conn, scan_executor=mock_executor, email_sender=failing_sender)
 
-    # next_scan_at must still have advanced
+    # Scan was still executed
+    mock_executor.assert_called_once()
+
+    # next_scan_at must have advanced (prevents infinite retry loop)
     row = conn.execute("SELECT next_scan_at FROM subscribers WHERE id = ?", (sub_id,)).fetchone()
     next_scan = datetime.fromisoformat(row["next_scan_at"]).replace(tzinfo=timezone.utc)
     expected = before + timedelta(hours=24)

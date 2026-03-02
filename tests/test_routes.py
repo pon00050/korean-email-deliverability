@@ -174,10 +174,19 @@ def test_unsubscribe_with_missing_token_shows_error(client):
     assert "유효하지 않은" in resp.text
 
 
-def test_unsubscribe_with_unknown_token_returns_200(client):
+# T5 — Invalid / random unsubscribe token must never return 5xx
+# A 500 on a random token would surface in logs and alarm users following an
+# old or corrupted unsubscribe link.
+@pytest.mark.parametrize("token", [
+    "notarealtoken",
+    "00000000-0000-0000-0000-000000000000",
+    "'; DROP TABLE subscribers; --",
+    "a" * 256,
+])
+def test_invalid_unsubscribe_token_never_returns_5xx(client, token):
     c, _ = client
-    resp = c.get("/unsubscribe?token=notarealtoken")
-    assert resp.status_code == 200
+    resp = c.get(f"/unsubscribe?token={token}")
+    assert resp.status_code < 500
 
 
 # ---------------------------------------------------------------------------

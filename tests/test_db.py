@@ -24,12 +24,6 @@ from src.db import (
 # create_subscriber
 # ---------------------------------------------------------------------------
 
-def test_create_subscriber_returns_id(conn):
-    sub_id = create_subscriber(conn, domain="example.co.kr", email="test@example.co.kr", interval_hours=168)
-    assert isinstance(sub_id, int)
-    assert sub_id > 0
-
-
 def test_create_subscriber_stores_fields(conn):
     sub_id = create_subscriber(conn, domain="example.co.kr", email="test@example.co.kr", interval_hours=24)
     row = get_subscriber_by_token(conn, _fetch_token(conn, sub_id))

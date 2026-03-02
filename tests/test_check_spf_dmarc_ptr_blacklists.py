@@ -1,17 +1,12 @@
 """
-Unit tests for individual check modules.
+Unit tests for SPF, DMARC, PTR, and Blacklists check modules.
 These tests do NOT make live DNS/HTTP calls — they use mocked responses.
-Run: uv run pytest tests/test_checks.py
+Run: uv run pytest tests/test_check_spf_dmarc_ptr_blacklists.py
 """
 
 import pytest
-import requests
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, MagicMock
 import dns.resolver
-
-
-# ─── KISA 화이트도메인 ─────────────────────────────────────────────────────────
-# Service terminated June 28, 2024. Full tests in test_kisa_whitedomain.py.
 
 
 # ─── SPF ──────────────────────────────────────────────────────────────────────
@@ -36,18 +31,17 @@ class TestSPF:
         assert r.status == "warn"
         assert r.score < 100
 
-    def test_fail_no_record(self):
+    @pytest.mark.parametrize("exc,expected_msg_fragment", [
+        (dns.resolver.NoAnswer,  "SPF 레코드가 없습니다"),
+        (dns.resolver.NXDOMAIN, "도메인을 찾을 수 없습니다"),
+    ])
+    def test_spf_fail_when_no_record(self, exc, expected_msg_fragment):
         from src.checks.spf import check_spf
-        with patch("dns.resolver.resolve", side_effect=dns.resolver.NoAnswer):
+        with patch("dns.resolver.resolve", side_effect=exc):
             r = check_spf("example.co.kr")
         assert r.status == "fail"
         assert r.score == 0
-
-    def test_fail_nxdomain(self):
-        from src.checks.spf import check_spf
-        with patch("dns.resolver.resolve", side_effect=dns.resolver.NXDOMAIN):
-            r = check_spf("nonexistent.co.kr")
-        assert r.status == "fail"
+        assert expected_msg_fragment in r.message_ko
 
 
 # ─── DMARC ────────────────────────────────────────────────────────────────────
@@ -58,31 +52,24 @@ class TestDMARC:
         rdata.strings = [record.encode()]
         return [rdata]
 
-    def test_pass_reject(self):
+    @pytest.mark.parametrize("record,exp_status,exp_score", [
+        ("v=DMARC1; p=reject; rua=mailto:dmarc@example.co.kr",     "pass", 100),
+        ("v=DMARC1; p=quarantine; rua=mailto:dmarc@example.co.kr", "warn",  75),
+        ("v=DMARC1; p=none; rua=mailto:dmarc@example.co.kr",       "warn",  20),
+    ])
+    def test_dmarc_policy_outcomes(self, record, exp_status, exp_score):
         from src.checks.dmarc import check_dmarc
-        with patch("dns.resolver.resolve", return_value=self._mock_txt(
-            "v=DMARC1; p=reject; rua=mailto:dmarc@example.co.kr"
-        )):
+        with patch("dns.resolver.resolve", return_value=self._mock_txt(record)):
             r = check_dmarc("example.co.kr")
-        assert r.status == "pass"
-        assert r.score == 100
+        assert r.status == exp_status
+        assert r.score == exp_score
 
-    def test_warn_quarantine(self):
+    def test_dmarc_no_rua_reduces_score(self):
         from src.checks.dmarc import check_dmarc
-        with patch("dns.resolver.resolve", return_value=self._mock_txt(
-            "v=DMARC1; p=quarantine; rua=mailto:dmarc@example.co.kr"
-        )):
+        with patch("dns.resolver.resolve", return_value=self._mock_txt("v=DMARC1; p=none")):
             r = check_dmarc("example.co.kr")
         assert r.status == "warn"
-        assert 0 < r.score < 100
-
-    def test_warn_none_policy(self):
-        from src.checks.dmarc import check_dmarc
-        with patch("dns.resolver.resolve", return_value=self._mock_txt(
-            "v=DMARC1; p=none"
-        )):
-            r = check_dmarc("example.co.kr")
-        assert r.status == "warn"
+        assert r.score == 10  # DMARC_SCORE_NONE(20) - DMARC_PENALTY_NO_RUA(10)
 
     def test_fail_missing(self):
         from src.checks.dmarc import check_dmarc
@@ -92,7 +79,7 @@ class TestDMARC:
         assert r.score == 0
 
 
-# ─── Scorer ───────────────────────────────────────────────────────────────────
+# ─── Scorer (Naver only — overall/grade tests are in test_scorer.py) ──────────
 
 class TestScorer:
     def _results(self, scores: dict[str, int]):
@@ -102,34 +89,6 @@ class TestScorer:
                         score=s, message_ko="")
             for name, s in scores.items()
         ]
-
-    def test_perfect_score(self):
-        from src.scorer import overall_score
-        results = self._results({
-            "SPF": 100, "DKIM": 100, "DMARC": 100,
-            "PTR": 100, "KISA RBL": 100, "KISA 화이트도메인": 100,
-            "국제 블랙리스트": 100,
-        })
-        assert overall_score(results) == 100
-
-    def test_zero_score(self):
-        from src.scorer import overall_score
-        results = self._results({
-            "SPF": 0, "DKIM": 0, "DMARC": 0,
-            "PTR": 0, "KISA RBL": 0, "KISA 화이트도메인": 0,
-            "국제 블랙리스트": 0,
-        })
-        assert overall_score(results) == 0
-
-    def test_grade_a(self):
-        from src.scorer import grade
-        assert grade(95) == "A"
-        assert grade(90) == "A"
-
-    def test_grade_f(self):
-        from src.scorer import grade
-        assert grade(10) == "F"
-        assert grade(0) == "F"
 
     def test_naver_score_all_pass(self):
         from src.scorer import naver_score
@@ -155,18 +114,14 @@ class TestPTR:
 # ─── Blacklists ───────────────────────────────────────────────────────────────
 
 class TestBlacklists:
-    def test_clean_domain(self):
+    @pytest.mark.parametrize("listed,exp_status,exp_score", [
+        (False, "pass", 100),
+        (True,  "fail",   0),
+    ])
+    def test_blacklists_outcome(self, listed, exp_status, exp_score):
         from src.checks.blacklists import check_blacklists
         with patch("src.checks.blacklists.get_sending_ips", return_value=("1.2.3.4",)), \
-             patch("src.checks.blacklists._dns_listed", return_value=False):
-            r = check_blacklists("clean.co.kr")
-        assert r.status == "pass"
-        assert r.score == 100
-
-    def test_listed_domain(self):
-        from src.checks.blacklists import check_blacklists
-        with patch("src.checks.blacklists.get_sending_ips", return_value=("1.2.3.4",)), \
-             patch("src.checks.blacklists._dns_listed", return_value=True):
-            r = check_blacklists("spam.co.kr")
-        assert r.status == "fail"
-        assert r.score == 0
+             patch("src.checks.blacklists._dns_listed", return_value=listed):
+            r = check_blacklists("example.co.kr")
+        assert r.status == exp_status
+        assert r.score == exp_score

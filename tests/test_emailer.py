@@ -45,12 +45,6 @@ SAMPLE_SCORES = {"overall": 52, "grade": "D", "naver": 44, "naver_label": "ì£¼ì
 # render_email_report
 # ---------------------------------------------------------------------------
 
-def test_render_email_report_returns_html_string():
-    html = render_email_report("example.co.kr", SAMPLE_RESULTS, SAMPLE_SCORES)
-    assert isinstance(html, str)
-    assert len(html) > 100
-
-
 def test_render_email_report_contains_domain():
     html = render_email_report("example.co.kr", SAMPLE_RESULTS, SAMPLE_SCORES)
     assert "example.co.kr" in html
@@ -85,7 +79,7 @@ def test_render_email_report_has_unsubscribe_link():
 # send_scan_report
 # ---------------------------------------------------------------------------
 
-def test_send_scan_report_calls_resend(monkeypatch):
+def test_send_scan_report(monkeypatch):
     mock_send = MagicMock(return_value=MagicMock(id="email-id-123"))
     monkeypatch.setattr("src.emailer.resend.Emails.send", mock_send)
     monkeypatch.setenv("RESEND_API_KEY", "re_test_key")
@@ -100,10 +94,11 @@ def test_send_scan_report_calls_resend(monkeypatch):
     )
 
     mock_send.assert_called_once()
-    call_kwargs = mock_send.call_args[0][0]
-    assert call_kwargs["to"] == ["user@example.co.kr"]
-    assert "example.co.kr" in call_kwargs["subject"]
-    assert "<html" in call_kwargs["html"].lower()
+    kwargs = mock_send.call_args[0][0]
+    assert kwargs["to"] == ["user@example.co.kr"]
+    assert "example.co.kr" in kwargs["subject"]
+    assert "D" in kwargs["subject"]
+    assert "<html" in kwargs["html"].lower()
 
 
 def test_render_email_report_missing_grade_defaults_to_F():
@@ -119,19 +114,3 @@ def test_render_email_report_missing_overall_defaults_to_zero():
     assert "0" in html
 
 
-def test_send_scan_report_subject_contains_grade(monkeypatch):
-    mock_send = MagicMock(return_value=MagicMock(id="x"))
-    monkeypatch.setattr("src.emailer.resend.Emails.send", mock_send)
-    monkeypatch.setenv("RESEND_API_KEY", "re_test_key")
-    monkeypatch.setenv("FROM_EMAIL", "noreply@example.com")
-
-    send_scan_report(
-        to_email="user@example.co.kr",
-        domain="example.co.kr",
-        results=SAMPLE_RESULTS,
-        scores=SAMPLE_SCORES,
-        unsubscribe_url="https://app.example.com/unsubscribe?token=abc",
-    )
-
-    subject = mock_send.call_args[0][0]["subject"]
-    assert "D" in subject  # grade letter
