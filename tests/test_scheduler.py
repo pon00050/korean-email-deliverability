@@ -115,6 +115,29 @@ def test_run_due_scans_advances_next_scan_at(conn):
     assert abs((next_scan - expected).total_seconds()) < 10
 
 
+def test_run_due_scans_advances_next_scan_at_even_on_exception(conn):
+    """next_scan_at must advance even when scan_executor raises — prevents infinite retry."""
+    sub_id = create_subscriber(conn, domain="example.co.kr", email="t@t.com", interval_hours=24)
+    _push_to_past(conn, sub_id)
+
+    def failing_executor(domain):
+        raise RuntimeError("DNS timeout")
+
+    mock_send = MagicMock()
+
+    before = datetime.now(timezone.utc)
+    run_due_scans(conn, scan_executor=failing_executor, email_sender=mock_send)
+
+    # Email should NOT have been sent (exception occurred before send)
+    mock_send.assert_not_called()
+
+    # next_scan_at must still have advanced
+    row = conn.execute("SELECT next_scan_at FROM subscribers WHERE id = ?", (sub_id,)).fetchone()
+    next_scan = datetime.fromisoformat(row["next_scan_at"]).replace(tzinfo=timezone.utc)
+    expected = before + timedelta(hours=24)
+    assert abs((next_scan - expected).total_seconds()) < 10
+
+
 def test_run_due_scans_handles_multiple_subscribers(conn):
     ids = []
     for i in range(3):
