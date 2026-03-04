@@ -128,10 +128,18 @@ def get_due_subscribers(conn) -> list[Any]:
     now = datetime.now(timezone.utc)
     now_val = now if _is_psycopg(conn) else now.isoformat()
     active_true = True if _is_psycopg(conn) else 1
-    cur = conn.execute(
-        f"SELECT * FROM subscribers WHERE active = {p} AND next_scan_at <= {p}",
-        (active_true, now_val),
-    )
+    if _is_psycopg(conn):
+        import psycopg.rows
+        cur = conn.cursor(row_factory=psycopg.rows.dict_row)
+        cur.execute(
+            f"SELECT * FROM subscribers WHERE active = {p} AND next_scan_at <= {p}",
+            (active_true, now_val),
+        )
+    else:
+        cur = conn.execute(
+            f"SELECT * FROM subscribers WHERE active = {p} AND next_scan_at <= {p}",
+            (active_true, now_val),
+        )
     return cur.fetchall()
 
 
@@ -150,8 +158,16 @@ def update_next_scan(conn, subscriber_id: int, *, interval_hours: int) -> None:
 def get_subscriber_by_token(conn, token: str) -> Any | None:
     """Return the subscriber row for the given unsubscribe token, or None."""
     p = _placeholder(conn)
-    cur = conn.execute(
-        f"SELECT * FROM subscribers WHERE unsubscribe_token = {p}",
-        (token,),
-    )
+    if _is_psycopg(conn):
+        import psycopg.rows
+        cur = conn.cursor(row_factory=psycopg.rows.dict_row)
+        cur.execute(
+            f"SELECT * FROM subscribers WHERE unsubscribe_token = {p}",
+            (token,),
+        )
+    else:
+        cur = conn.execute(
+            f"SELECT * FROM subscribers WHERE unsubscribe_token = {p}",
+            (token,),
+        )
     return cur.fetchone()
