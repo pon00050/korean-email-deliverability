@@ -327,10 +327,82 @@ the all-pass scenario to score below 100.
 
 ---
 
+## Act 11 — The CLI Grows Up: argparse → Typer
+
+### The Four-Layer Mental Model
+
+Every well-built CLI tool follows the same four-layer progression:
+
+1. **Script** — a `.py` file you run directly (`python check.py domain`)
+2. **Library** — importable Python functions (`from src.checks import check_spf`)
+3. **CLI** — a proper command with `--help`, tab-completion, typed arguments
+4. **API** — an HTTP interface that calls the same library functions
+
+This project has now implemented all four. The analysis logic has always lived in
+`src/` (layer 2). `check.py` was always layer 1. v2.0 promotes `check.py` to
+layer 3 by replacing `argparse` with Typer and registering a `senderfit` entry
+point in `[project.scripts]`. `app.py` is layer 4.
+
+### Why Typer
+
+Typer and FastAPI share a design philosophy — both were built by Sebastián
+Ramírez. Typer decorators mirror FastAPI route decorators:
+
+```python
+# FastAPI route
+@app.post("/subscribe")
+def subscribe(domain: str = Form(...), email: str = Form(...)):
+    ...
+
+# Typer command
+@app.command()
+def scan(
+    domain: str = typer.Argument(...),
+    dkim_selector: Optional[str] = typer.Option(None, "--dkim-selector"),
+):
+    ...
+```
+
+Using both creates a consistent developer experience. It is also visually
+obvious that the CLI and the API are two interfaces to the same engine — the
+decorator pattern makes that structural symmetry explicit.
+
+### What the `senderfit` Entry Point Unlocks
+
+Before v2.0:
+```bash
+uv run check.py example.co.kr   # must locate the file first
+python check.py example.co.kr   # must be in the repo directory
+```
+
+After v2.0:
+```bash
+senderfit example.co.kr         # works from any directory after uv sync
+senderfit --help                # full Korean help text with argument descriptions
+```
+
+The `[project.scripts]` entry in `pyproject.toml` registers `senderfit` as
+a console script pointing to `check:app` (the Typer app object in `check.py`).
+After `uv sync` (or `pip install -e .`), the command is on the system PATH.
+
+### The Architectural Invariant
+
+This change confirms the core architectural invariant: `src/checks/*.py` is
+called identically by all three entry points —
+
+- `check.py` / `senderfit` (Typer CLI)
+- `app.py` (FastAPI, via `POST /subscribe`)
+- `scheduler.py` (APScheduler, via the scheduled job)
+
+The core never touches the interface. Adding a new interface layer (e.g., a
+future gRPC service or a Discord bot) requires zero changes to any check module.
+
+---
+
 ## The Mental Map
 
 ```
-check.py (CLI entry)          app.py (FastAPI entry)
+check.py / senderfit (Typer CLI)   app.py (FastAPI entry)
      |                              |
      |  ←— parallel ThreadPool —→  |
      |                              |
@@ -379,4 +451,4 @@ Infrastructure shared across all checks:
 
 ---
 
-*Last updated: 2026-03-02. Reflects codebase state after commit `cd0ce8d` on `dev` branch. 83 tests passing.*
+*Last updated: 2026-03-04. Reflects codebase state after v2.0 Typer migration on `dev` branch. 83 tests passing.*

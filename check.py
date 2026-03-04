@@ -3,15 +3,16 @@
 kr-email-health — Korean email domain health checker
 
 Usage:
-    uv run check.py <domain>
-    uv run check.py example.co.kr
-    uv run check.py example.co.kr --dkim-selector default
-    uv run check.py example.co.kr --output reports/example.html
+    senderfit example.co.kr
+    senderfit example.co.kr --dkim-selector default
+    senderfit example.co.kr --output reports/example.html
+    uv run check.py example.co.kr  (no-install alternative)
 """
 
-import argparse
 import sys
 import io
+import typer
+from typing import Optional
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
@@ -34,25 +35,22 @@ from src.scorer import overall_score, naver_score, grade, naver_label, status_em
 from src.report import generate_report
 from src.utils import normalize_domain
 
+app = typer.Typer(help="한국 이메일 도메인 상태 검사기")
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="한국 이메일 도메인 상태 검사기",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="예시: uv run check.py example.co.kr",
-    )
-    parser.add_argument("domain", help="검사할 도메인 (예: example.co.kr)")
-    parser.add_argument("--dkim-selector", help="DKIM 셀렉터 (미입력 시 자동 탐지)", default=None)
-    parser.add_argument("--output", help="HTML 리포트 저장 경로", default=None)
-    args = parser.parse_args()
 
-    domain = normalize_domain(args.domain)
+@app.command()
+def scan(
+    domain: str = typer.Argument(..., help="검사할 도메인 (예: example.co.kr)"),
+    dkim_selector: Optional[str] = typer.Option(None, "--dkim-selector", help="DKIM 셀렉터 (미입력 시 자동 탐지)"),
+    output: Optional[Path] = typer.Option(None, "--output", help="HTML 리포트 저장 경로"),
+) -> None:
+    domain = normalize_domain(domain)
 
     print(f"\n🔍 {domain} 도메인 검사 중...\n")
 
     checks = [
         ("SPF",              lambda: check_spf(domain)),
-        ("DKIM",             lambda: check_dkim(domain, args.dkim_selector)),
+        ("DKIM",             lambda: check_dkim(domain, dkim_selector)),
         ("DMARC",            lambda: check_dmarc(domain)),
         ("PTR",              lambda: check_ptr(domain)),
         ("KISA RBL",         lambda: check_kisa_rbl(domain)),
@@ -96,7 +94,7 @@ def main() -> None:
     print(f"{'─'*55}")
 
     # HTML report
-    output_path = Path(args.output) if args.output else (
+    output_path = output if output else (
         Path("reports") / f"{domain}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
     )
     generate_report(domain, results, output_path)
@@ -104,4 +102,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    app()

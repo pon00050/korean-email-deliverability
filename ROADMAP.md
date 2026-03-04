@@ -25,6 +25,9 @@ Post-MVP feature roadmap. MVP is the CLI scan tool with 7 checks + Naver score.
   HTML report delivered to subscriber on each scheduled scan.
 - [x] **Self-serve signup form** — `/` serves a signup form (scope expanded beyond
   original plan; operator no longer needs to seed subscribers manually).
+- [x] **Typer CLI + `senderfit` entry point** — Phase 1 CLI upgraded from argparse
+  to Typer; `senderfit` installable command registered in `[project.scripts]`.
+  Backward-compatible: `uv run check.py` continues to work.
 - [ ] **Resend credentials** — `RESEND_API_KEY` and `FROM_EMAIL` are placeholders in
   Railway Variables. End-to-end email delivery blocked until a sending domain is
   verified in Resend and credentials are updated. See `SETUP_PHASE2.md` Step 2.
