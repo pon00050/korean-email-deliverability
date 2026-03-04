@@ -36,7 +36,23 @@ Post-MVP feature roadmap. MVP is the CLI scan tool with 7 checks + Naver score.
 
 ---
 
-## Phase 3 — Web UI + Multi-Domain Dashboard (post-May 2026)
+## Phase 3 — Batch B2B Enrichment API (pre-KISA / K-DATA)
+
+- [ ] **Batch input endpoint** — accept domain list via CSV upload or JSON API (POST `/batch`)
+- [ ] **Structured output** — per-domain risk data returned as CSV/JSON (not HTML report)
+- [ ] **API authentication** — API key issuance and validation for B2B clients
+- [ ] **Diff / alerting logic** — detect score changes between runs; trigger email alert on regression
+- [ ] **Async job handling** — queue large batches (100K+ domains) without blocking; poll endpoint for results
+
+**Rationale:** This is the genuine monetizable product. A Tax SaaS company (e.g., Barobill with
+100K+ client domains) submits their domain list; Senderfit returns structured risk data on a
+weekly/monthly cadence. The ThreadPoolExecutor scanner is ~80% of the work — batch I/O and
+structured output are the remaining gap. Also the product shape that makes K-DATA Track 2
+(가공기업) eligible and KISA SECaaS credible.
+
+---
+
+## Phase 4 — Web UI + Multi-Domain Dashboard (post-May 2026)
 
 - [ ] Hosted web UI: submit a domain, get a shareable scan URL (mail-tester.com style)
 - [ ] Multi-domain dashboard: customer sees all subscribed domains and their current scores
@@ -45,7 +61,7 @@ Post-MVP feature roadmap. MVP is the CLI scan tool with 7 checks + Naver score.
 
 ---
 
-## Phase 4 — Additional Checks + Intelligence (longer-term)
+## Phase 5 — Additional Checks + Intelligence (longer-term)
 
 - [ ] 카카오/다음 메일 호환성 점수 (Kakao/Daum Mail compatibility score — same proxy-indicator approach as Naver)
 - [ ] 도메인 일괄 검사 — CSV 입력 (Bulk domain scan via CSV input)
@@ -53,7 +69,7 @@ Post-MVP feature roadmap. MVP is the CLI scan tool with 7 checks + Naver score.
 
 ---
 
-## Phase 5 — Hard Problems (deferred)
+## Phase 6 — Hard Problems (deferred)
 
 - [ ] 네이버 시드 계정 받은편지함 테스트 (Naver seed account inbox placement test) —
   requires owning seed Naver accounts, actual mail delivery, inbox vs. spam classification.
