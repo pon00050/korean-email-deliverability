@@ -442,7 +442,7 @@ wheels = [
 
 [[package]]
 name = "kr-email-health"
-version = "0.1.0"
+version = "2.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "apscheduler" },
@@ -452,6 +452,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "requests" },
     { name = "resend" },
+    { name = "typer" },
 ]
 
 [package.optional-dependencies]
@@ -469,6 +470,7 @@ requires-dist = [
     { name = "python-dotenv" },
     { name = "requests" },
     { name = "resend", specifier = ">=2.0" },
+    { name = "typer", specifier = ">=0.9.0" },
 ]
 provides-extras = ["dev"]
 

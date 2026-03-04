@@ -73,7 +73,7 @@ $ uv run check.py example.co.kr
 git clone https://github.com/pon00050/korean-email-deliverability
 cd korean-email-deliverability
 uv sync
-uv run check.py example.co.kr
+senderfit example.co.kr
 ```
 
 ### pip
@@ -81,15 +81,17 @@ uv run check.py example.co.kr
 git clone https://github.com/pon00050/korean-email-deliverability
 cd korean-email-deliverability
 pip install -e .
-python check.py example.co.kr
+senderfit example.co.kr
 ```
+
+설치 없이 바로 실행하려면: `uv run check.py example.co.kr`
 
 Output: `reports/example.co.kr_YYYYMMDD_HHMMSS.html`
 
 ## 옵션 (Options)
 
 ```
-uv run check.py <domain> [--dkim-selector <selector>] [--output <path>]
+senderfit <domain> [--dkim-selector <selector>] [--output <path>]
 ```
 
 ## 배경 (Background)
