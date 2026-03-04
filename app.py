@@ -5,28 +5,33 @@ Routes:
     POST /subscribe     — Create subscription + trigger immediate scan
     GET  /unsubscribe   — Deactivate subscription by token
     GET  /health        — Healthcheck (Railway deploy gate)
+    POST /batch         — Phase 3 B2B batch enrichment API (≤50 domains)
 
 Environment variables:
     DATABASE_URL    — PostgreSQL DSN (provided by Railway)
     RESEND_API_KEY  — Resend API key
     FROM_EMAIL      — Verified sender address
     BASE_URL        — Public URL of this app (for unsubscribe links)
+    BATCH_API_KEY   — Optional API key for /batch; if unset, auth is disabled
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 import psycopg
 from apscheduler.schedulers.background import BackgroundScheduler
-from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Form, Header, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel
 
+from src.batch import batch_result_to_csv, run_batch_scan, _MAX_BATCH_DOMAINS
 from src.db import create_tables, create_subscriber, deactivate_subscriber, get_subscriber_by_token
 from src.emailer import send_scan_report
 from src.scheduler import make_apscheduler_job
@@ -60,24 +65,31 @@ _startup_error: str | None = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _scheduler, _startup_error
-    try:
-        with get_db() as _init_conn:
-            create_tables(_init_conn)
-        logger.info("Database tables ready")
+    _startup_error = None  # reset each startup (avoids state leaking between test runs)
 
-        _scheduler = BackgroundScheduler()
-        _scheduler.add_job(
-            make_apscheduler_job(get_db),
-            "interval",
-            minutes=5,
-            id="scan_job",
-            max_instances=1,
-        )
-        _scheduler.start()
-        logger.info("Scheduler started")
-    except Exception as e:
-        _startup_error = str(e)
-        logger.error("Startup error (app will still serve /health): %s", e)
+    if os.environ.get("SENDERFIT_SKIP_DB"):
+        # Batch-only dev mode: skip DB and scheduler so /health returns "ok"
+        # and /batch works without a Postgres connection.
+        logger.info("SENDERFIT_SKIP_DB set — DB and scheduler init skipped")
+    else:
+        try:
+            with get_db() as _init_conn:
+                create_tables(_init_conn)
+            logger.info("Database tables ready")
+
+            _scheduler = BackgroundScheduler()
+            _scheduler.add_job(
+                make_apscheduler_job(get_db),
+                "interval",
+                minutes=5,
+                id="scan_job",
+                max_instances=1,
+            )
+            _scheduler.start()
+            logger.info("Scheduler started")
+        except Exception as e:
+            _startup_error = str(e)
+            logger.error("Startup error (app will still serve /health): %s", e)
 
     yield
 
@@ -194,6 +206,49 @@ async def unsubscribe(request: Request, token: str = ""):
             "unsubscribed": True,
             "domain": domain,
         },
+    )
+
+
+# ---------------------------------------------------------------------------
+# POST /batch — Phase 3 B2B Enrichment API
+# ---------------------------------------------------------------------------
+
+class BatchRequest(BaseModel):
+    domains: list[str]
+    format: Literal["json", "csv"] = "json"
+
+
+@app.post("/batch")
+async def batch_scan(
+    body: BatchRequest,
+    x_api_key: str = Header(default=""),
+):
+    # Auth — disabled when BATCH_API_KEY is not set (dev/test mode)
+    required_key = os.environ.get("BATCH_API_KEY", "")
+    if required_key and x_api_key != required_key:
+        raise HTTPException(status_code=401, detail="Invalid or missing X-API-Key")
+
+    if not body.domains or len(body.domains) > _MAX_BATCH_DOMAINS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"domains must be 1–{_MAX_BATCH_DOMAINS} items",
+        )
+    domains = [normalize_domain(d) for d in body.domains if "." in d]
+    if not domains:
+        raise HTTPException(status_code=422, detail="No valid domains provided")
+
+    data = await asyncio.to_thread(run_batch_scan, domains)
+
+    if body.format == "csv":
+        return _batch_to_csv_response(data)
+    return JSONResponse(content=data)
+
+
+def _batch_to_csv_response(data: dict) -> Response:
+    return Response(
+        content=batch_result_to_csv(data),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=senderfit_batch.csv"},
     )
 
 
