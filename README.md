@@ -66,6 +66,21 @@ $ uv run check.py example.co.kr
 
 👉 https://senderfit.kr
 
+## 사전 준비 (Prerequisites)
+
+- **Python 3.11 이상** — `python --version` 으로 확인
+- **uv** — 빠른 Python 패키지 매니저
+
+  ```bash
+  # macOS / Linux
+  curl -LsSf https://astral.sh/uv/install.sh | sh
+
+  # Windows (PowerShell)
+  powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+  # 또는: brew install uv / pip install uv
+  ```
+
 ## 빠른 시작 (Quickstart)
 
 ### uv (권장)
@@ -87,6 +102,28 @@ senderfit example.co.kr
 설치 없이 바로 실행하려면: `uv run check.py example.co.kr`
 
 Output: `reports/example.co.kr_YYYYMMDD_HHMMSS.html`
+
+### 웹 앱 로컬 실행 (Postgres 없이)
+
+`SENDERFIT_SKIP_DB=1` 을 설정하면 DB 없이 서버를 시작할 수 있습니다.
+`/health` 는 `ok` 를 반환하고 `POST /batch` 가 완전히 작동합니다.
+`/subscribe` 는 실제 `DATABASE_URL` 이 필요합니다.
+
+```bash
+# macOS / Linux
+SENDERFIT_SKIP_DB=1 uv run uvicorn app:app --host 127.0.0.1 --port 8000
+
+# Windows (PowerShell)
+$env:SENDERFIT_SKIP_DB=1; uv run uvicorn app:app --host 127.0.0.1 --port 8000
+```
+
+테스트:
+```bash
+curl -s -X POST http://127.0.0.1:8000/batch \
+  -H "Content-Type: application/json" \
+  -d '{"domains": ["example.co.kr"]}' \
+  | python -m json.tool --no-ensure-ascii
+```
 
 ## 옵션 (Options)
 
