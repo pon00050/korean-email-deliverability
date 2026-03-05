@@ -36,19 +36,13 @@ Post-MVP feature roadmap. MVP is the CLI scan tool with 7 checks + Naver score.
 
 ---
 
-## Phase 3 — Batch B2B Enrichment API (pre-KISA / K-DATA)
+## Phase 3 — Batch B2B Enrichment API ✅ (complete)
 
-- [ ] **Batch input endpoint** — accept domain list via CSV upload or JSON API (POST `/batch`)
-- [ ] **Structured output** — per-domain risk data returned as CSV/JSON (not HTML report)
-- [ ] **API authentication** — API key issuance and validation for B2B clients
+- [x] **Batch input endpoint** — accept domain list via CSV upload or JSON API (POST `/batch`)
+- [x] **Structured output** — per-domain risk data returned as CSV/JSON (not HTML report)
+- [x] **API authentication** — API key issuance and validation for B2B clients
 - [ ] **Diff / alerting logic** — detect score changes between runs; trigger email alert on regression
 - [ ] **Async job handling** — queue large batches (100K+ domains) without blocking; poll endpoint for results
-
-**Rationale:** This is the genuine monetizable product. A Tax SaaS company (e.g., Barobill with
-100K+ client domains) submits their domain list; Senderfit returns structured risk data on a
-weekly/monthly cadence. The ThreadPoolExecutor scanner is ~80% of the work — batch I/O and
-structured output are the remaining gap. Also the product shape that makes K-DATA Track 2
-(가공기업) eligible and KISA SECaaS credible.
 
 ---
 
