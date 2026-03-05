@@ -44,7 +44,6 @@ Organized by urgency, not product phase. For feature-phase context, see ROADMAP.
 - [ ] **Scan history / results dashboard**
   Subscribers receive email reports but cannot log in to see past scans.
   Without any history view, churn after the first automated email is high.
-  Corresponds to Phase 4 in ROADMAP.md.
 
 - [ ] **Batch API onboarding documentation**
   No public docs exist for POST /batch. A paying B2B customer needs:
