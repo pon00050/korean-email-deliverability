@@ -14,7 +14,8 @@ File: `.git/hooks/pre-commit`
 ```bash
 #!/bin/bash
 # Blocks commits that include gitignored (private) files.
-STAGED=$(git diff --cached --name-only 2>/dev/null)
+# --diff-filter=ACM excludes deletions — git rm --cached should not be blocked.
+STAGED=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null)
 BLOCKED=()
 for file in $STAGED; do
     if git check-ignore -q --no-index "$file" 2>/dev/null; then
@@ -78,7 +79,8 @@ if "git commit" not in command:
     sys.exit(0)
 
 result = subprocess.run(
-    ["git", "diff", "--cached", "--name-only"],
+    # --diff-filter=ACM excludes deletions — git rm --cached should not be blocked.
+    ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"],
     capture_output=True, text=True
 )
 staged = [f for f in result.stdout.strip().splitlines() if f]
