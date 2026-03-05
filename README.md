@@ -150,10 +150,7 @@ senderfit <domain> [--dkim-selector <selector>] [--output <path>]
 
 ## 로드맵 (Roadmap)
 
-- [x] 정기 재검사 + 상태 변경 알림 (호스팅 버전에서 제공)
-- [ ] 도메인 일괄 검사 (CSV 입력)
-- [ ] 카카오/다음 메일 호환성 점수
-- [ ] DMARC 집계 리포트 업로드 + 시각화
+자세한 기능 로드맵은 [ROADMAP.md](ROADMAP.md)를 참고하세요.
 
 ## 주의사항 (Disclaimer)
 

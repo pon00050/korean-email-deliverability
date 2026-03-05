@@ -4,10 +4,9 @@ This document covers every step that cannot be automated — account creation,
 DNS configuration, cloud deployment, and end-to-end verification.
 All technical details have been verified against current state (March 2026).
 
-**Current status:** Railway deploy is live and green as of 2026-03-02.
-Steps 1, 3, 4, and 6 are complete. Step 2 is complete as of 2026-03-05
-(Resend domain partially verified — sending enabled; Railway Variables updated).
-Step 5 end-to-end email verification remains.
+**Current status:** All steps complete as of 2026-03-05. Email delivery confirmed.
+Railway deploy live and green. Resend domain verified, credentials set, scan report
+received in subscriber inbox with correct Korean text and working unsubscribe link.
 
 ---
 
@@ -15,7 +14,7 @@ Step 5 end-to-end email verification remains.
 
 - [x] GitHub repo pushed and up to date on the `dev` branch
 - [x] `uv.lock` committed (required for Railway to detect uv — see Step 1)
-- [ ] A domain you control where you can add DNS TXT records
+- [x] A domain you control where you can add DNS TXT records — `senderfit.kr` registered and verified
       *(required only for Resend email sending in Step 2; not needed for Railway deploy)*
 - [x] Railway Hobby plan — $5/month, subscribed 2026-03-04
 

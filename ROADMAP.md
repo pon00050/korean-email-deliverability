@@ -2,6 +2,8 @@
 
 Post-MVP feature roadmap. MVP is the CLI scan tool with 7 checks + Naver score.
 
+For current open action items, see NEXT_ACTIONS.md.
+
 ---
 
 ## Phase 1 — MVP ✅ (complete)
@@ -28,9 +30,9 @@ Post-MVP feature roadmap. MVP is the CLI scan tool with 7 checks + Naver score.
 - [x] **Typer CLI + `senderfit` entry point** — Phase 1 CLI upgraded from argparse
   to Typer; `senderfit` installable command registered in `[project.scripts]`.
   Backward-compatible: `uv run check.py` continues to work.
-- [ ] **Resend credentials** — `RESEND_API_KEY` and `FROM_EMAIL` are placeholders in
-  Railway Variables. End-to-end email delivery blocked until a sending domain is
-  verified in Resend and credentials are updated. See `SETUP_PHASE2.md` Step 2.
+- [x] **Resend credentials** — `RESEND_API_KEY` and `FROM_EMAIL` set in Railway Variables.
+  End-to-end email delivery verified 2026-03-05: scan report received in inbox,
+  Korean text correct, unsubscribe link working. Phase 2 is 100% ✅.
 
 **Delivered beyond original scope:** self-serve signup UI (originally "out of scope this phase").
 
@@ -41,30 +43,30 @@ Post-MVP feature roadmap. MVP is the CLI scan tool with 7 checks + Naver score.
 - [x] **Batch input endpoint** — accept domain list via CSV upload or JSON API (POST `/batch`)
 - [x] **Structured output** — per-domain risk data returned as CSV/JSON (not HTML report)
 - [x] **API authentication** — API key issuance and validation for B2B clients
-- [ ] **Diff / alerting logic** — detect score changes between runs; trigger email alert on regression
-- [ ] **Async job handling** — queue large batches (100K+ domains) without blocking; poll endpoint for results
+Planned extensions: diff/alerting logic (score-change email triggers) and async job
+handling for batches >50 domains are scoped but not yet scheduled.
 
 ---
 
 ## Phase 4 — Web UI + Multi-Domain Dashboard (post-May 2026)
 
-- [ ] Hosted web UI: submit a domain, get a shareable scan URL (mail-tester.com style)
-- [ ] Multi-domain dashboard: customer sees all subscribed domains and their current scores
-- [ ] DMARC aggregate report upload: XML parsing, pass/fail summary by source IP
-- [ ] PDF export of scan report
+- Hosted web UI: submit a domain, get a shareable scan URL (mail-tester.com style)
+- Multi-domain dashboard: customer sees all subscribed domains and their current scores
+- DMARC aggregate report upload: XML parsing, pass/fail summary by source IP
+- PDF export of scan report
 
 ---
 
 ## Phase 5 — Additional Checks + Intelligence (longer-term)
 
-- [ ] 카카오/다음 메일 호환성 점수 (Kakao/Daum Mail compatibility score — same proxy-indicator approach as Naver)
-- [ ] 도메인 일괄 검사 — CSV 입력 (Bulk domain scan via CSV input)
-- [ ] DMARC 집계 리포트 추세 뷰 (DMARC aggregate report trend view — weekly/monthly pass rate over time)
+- 카카오/다음 메일 호환성 점수 (Kakao/Daum Mail compatibility score — same proxy-indicator approach as Naver)
+- 도메인 일괄 검사 — CSV 입력 (Bulk domain scan via CSV input)
+- DMARC 집계 리포트 추세 뷰 (DMARC aggregate report trend view — weekly/monthly pass rate over time)
 
 ---
 
 ## Phase 6 — Hard Problems (deferred)
 
-- [ ] 네이버 시드 계정 받은편지함 테스트 (Naver seed account inbox placement test) —
+- 네이버 시드 계정 받은편지함 테스트 (Naver seed account inbox placement test) —
   requires owning seed Naver accounts, actual mail delivery, inbox vs. spam classification.
   Hard operational problem, deferred until there is paying demand for it.
