@@ -110,6 +110,7 @@
 
     {% if not success and not unsubscribed %}
     <form method="post" action="/subscribe">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
       <div class="form-group">
         <label for="domain">도메인</label>

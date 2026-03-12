@@ -1,73 +1,47 @@
 """
 KISA RBL (한국인터넷진흥원 실시간 차단 목록) check.
 
-DNS zone: {reversed-ip}.rbl.kisa.or.kr
-If the query resolves → IP is listed (blocked).
-If NXDOMAIN → IP is clean.
+** SERVICE TERMINATED January 31, 2024 **
 
-Verified 2026-02-28: Zone responds correctly (NXDOMAIN for clean IPs).
+KISA formally ended the RBL DNS blacklist service:
+  - Service fully terminated: January 31, 2024
+  - DNS zone rbl.kisa.or.kr is no longer authoritative
+  - Reason: shift to managed ESPs and carrier-level filtering reduced
+    the practical effectiveness of a shared IP blacklist
+
+The replacement path is individual compliance with Naver and Kakao bulk sender
+requirements (SPF + DKIM + DMARC + PTR), which Naver made mandatory July 2024.
+
+No network request is made. The check returns a static error result explaining
+the termination.
+status="error" causes the scorer to exclude this check's weight, allowing
+a perfect 100/100 score to be achievable for domains with all other checks passing.
+
+Source: 패스코리아넷 "KISA-RBL 서비스 종료 안내" (passkorea.net/notice/49644)
 """
 
-import dns.resolver
-import dns.reversename
-from concurrent.futures import ThreadPoolExecutor
 from src.models import CheckResult
-from src.checks._dns_cache import get_sending_ips, DNS_TIMEOUT
 
-KISA_RBL_ZONE = "rbl.kisa.or.kr"
-KISA_RBL_SCORE_PASS = 100
-KISA_RBL_SCORE_ERROR = 0    # error status is excluded from scoring by src/scorer.py; value is informational only
-KISA_RBL_SCORE_FAIL = 0
+_NAME = "KISA RBL"
 
 
-def check_kisa_rbl(domain: str) -> CheckResult:
-    ips = list(get_sending_ips(domain))
-    if not ips:
-        return CheckResult(
-            name="KISA RBL",
-            status="error",
-            score=KISA_RBL_SCORE_ERROR,
-            message_ko="발신 IP를 확인할 수 없어 KISA RBL 검사를 건너뜁니다",
-        )
-
-    with ThreadPoolExecutor(max_workers=len(ips)) as ex:
-        results = list(ex.map(_is_listed, ips))
-    listed = [ip for ip, hit in zip(ips, results) if hit]
-
-    if listed:
-        return CheckResult(
-            name="KISA RBL",
-            status="fail",
-            score=KISA_RBL_SCORE_FAIL,
-            message_ko=f"KISA RBL에 등록되어 있습니다 (IP: {', '.join(listed)})",
-            detail_ko=(
-                "KISA(한국인터넷진흥원) 차단 목록에 등록된 IP는 "
-                "네이버, 카카오, KT 등 한국 ISP로의 이메일 발송이 차단됩니다. "
-                "차단은 자동 알림 없이 이루어집니다."
-            ),
-            remediation_ko=(
-                "KISA 차단 해제 신청: https://www.kisa.or.kr/\n"
-                "해제 전 스팸 발송 원인(취약한 계정, 악성코드 등)을 반드시 제거하세요."
-            ),
-            raw=f"Listed IPs: {', '.join(listed)}",
-        )
-
+def check_kisa_rbl(domain: str) -> CheckResult:  # noqa: ARG001
     return CheckResult(
-        name="KISA RBL",
-        status="pass",
-        score=KISA_RBL_SCORE_PASS,
-        message_ko="KISA RBL(한국인터넷진흥원 차단 목록)에 등록되지 않았습니다",
-        raw=f"Checked IPs: {', '.join(ips)}",
+        name=_NAME,
+        status="error",
+        score=0,
+        message_ko="KISA RBL 서비스 종료 (2024년 1월 31일)",
+        detail_ko=(
+            "KISA(한국인터넷진흥원) RBL DNS 차단 목록은 2024년 1월 31일 완전 종료됐습니다. "
+            "rbl.kisa.or.kr 존은 더 이상 운영되지 않습니다. "
+            "네이버·카카오는 자체 발신자 요건으로 전환했습니다."
+        ),
+        remediation_ko=(
+            "현재 대체 경로:\n"
+            "• 네이버 메일: SPF + DKIM + DMARC + PTR 4가지를 모두 설정하면 "
+            "네이버 2024년 7월 요건을 충족합니다. 차단 시 "
+            "help.naver.com → '스팸 차단 해제 요청' 폼 제출.\n"
+            "• 카카오/Daum 메일: 별도 공개 신청 경로 없음. "
+            "차단 발생 시 카카오 기업 고객센터 개별 문의."
+        ),
     )
-
-
-def _is_listed(ip: str) -> bool:
-    try:
-        reversed_ip = ".".join(reversed(ip.split(".")))
-        query = f"{reversed_ip}.{KISA_RBL_ZONE}"
-        dns.resolver.resolve(query, "A", lifetime=DNS_TIMEOUT)
-        return True  # resolved → listed
-    except dns.resolver.NXDOMAIN:
-        return False  # not listed
-    except Exception:
-        return False  # treat lookup errors as clean

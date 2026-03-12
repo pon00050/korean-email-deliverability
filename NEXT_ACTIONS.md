@@ -1,6 +1,6 @@
 # NEXT_ACTIONS.md — Open Action Items
 
-Last updated: 2026-03-05
+Last updated: 2026-03-13
 
 This is the **only file in the project that tracks open work.**
 All other files are history/vision. Add new tasks here, nowhere else.
@@ -10,16 +10,14 @@ Organized by urgency, not product phase. For feature-phase context, see ROADMAP.
 
 ---
 
-## Status: Phases 1–3a complete. Product works. Revenue requires the items below.
+## Status: Phases 1–4 complete (web UI, dashboard, PDF, DMARC upload). Revenue requires the items below.
 
 ---
 
 ## Tier 1 — Required before first paid customer (1–2 weeks)
 
-- [ ] **Landing page**
-  `senderfit.kr` currently shows a bare signup form. A prospective buyer needs:
-  what the product does, why it matters (KISA RBL silently blocks senders, Naver
-  filtering is a black box), pricing, and a clear CTA. Even a single-page HTML works.
+- [x] **Landing page** *(Phase 4.3 — 2026-03-13)*
+  HTMX-powered Korean landing page with inline scan, value props, and CTAs.
 
 - [ ] **Pricing decision + public pricing page**
   No pricing is published anywhere. Outbound cannot reference a number.
@@ -31,24 +29,51 @@ Organized by urgency, not product phase. For feature-phase context, see ROADMAP.
   For Korean B2B, Toss Payments or invoice-on-signup are the realistic paths.
   Without this, there is no route from "interested" to "paying".
 
-- [ ] **Per-customer API keys for the batch endpoint**
-  The batch API currently uses a single shared `BATCH_API_KEY` env var.
-  Selling batch access to multiple customers requires per-customer keys.
-  Minimum viable: `api_keys(key_hash, customer_id, created_at, active)` DB table +
-  lookup in the `/batch` auth middleware. No UI required at first — manual provisioning is fine.
+- [x] **Per-customer API keys for the batch endpoint** *(Phase 4.1 — 2026-03-13)*
+  `sf_live_` prefixed keys, SHA-256 hashed in DB, admin CLI provisioning via `admin.py`.
+  Legacy `BATCH_API_KEY` env var accepted as fallback.
 
 ---
 
 ## Tier 2 — Required to retain customers (weeks)
 
-- [ ] **Scan history / results dashboard**
-  Subscribers receive email reports but cannot log in to see past scans.
-  Without any history view, churn after the first automated email is high.
+- [x] **Scan history / results dashboard** *(Phase 4.4 — 2026-03-13)*
+  Multi-domain dashboard with session auth, login/register, scan history per domain.
 
 - [ ] **Batch API onboarding documentation**
   No public docs exist for POST /batch. A paying B2B customer needs:
   authentication, request/response schema, rate limits, and error codes.
   A single markdown page or README section is the minimum.
+  *(Per-customer key auth is now implemented — docs are the remaining gap.)*
+
+---
+
+## Tier 3 — Required for data-driven scoring and research output (longer-term)
+
+- [ ] **Collect labelled delivery outcome data**
+  All supervised ML approaches (logistic regression, random forests, Lasso) that could
+  validate or replace the current hand-tuned scoring weights in `src/scorer.py` require
+  ground-truth labels: "did this domain's email reach the Naver inbox, or was it
+  spam-filtered / blocked?"
+
+  Without this data, the scoring model remains heuristic and the statistical work in
+  `research/ISLR_relevant_topics_for_scoring_model_Mar2026.md` cannot be executed.
+
+  Three paths to acquiring labels, in order of feasibility:
+
+  1. **Customer feedback loop (nearest term):** Add an optional `delivery_rate` field
+     to the batch API response schema now, before customers exist, so the habit and
+     the data contract are in place from day one. Ask early batch customers to report
+     their actual delivery rates back via a lightweight endpoint or survey.
+
+  2. **ESP data partnership:** Approach Stibee, TasOn, or NHN Cloud for a data-sharing
+     arrangement — they hold delivery rate data for thousands of Korean domains.
+     Positioning: their data improves a scoring model that makes their customers
+     better senders, which reduces their own spam complaints.
+
+  3. **Naver seed account inbox test (Phase 6):** Build internally — own seed Naver
+     accounts, send test emails, classify inbox vs. spam. High operational cost;
+     deferred until there is clear paying demand for inbox placement data specifically.
 
 ---
 
@@ -59,7 +84,8 @@ Organized by urgency, not product phase. For feature-phase context, see ROADMAP.
 - [x] Hosted signup + scheduled monitoring (senderfit.kr, Railway, PostgreSQL, APScheduler)
 - [x] Batch B2B API (POST /batch, ≤50 domains, JSON + CSV output)
 - [x] Optional API key auth on /batch (single shared key via BATCH_API_KEY env var)
-- [x] 90 tests passing, CI green (GitHub Actions)
+- [x] 156 tests passing, CI green (GitHub Actions)
 - [x] senderfit.kr + senderfit.co.kr domains registered (Gabia, 2026-03-04)
 - [x] GitHub repo public, bilingual README, CI badge
 - [x] Resend email delivery end-to-end verified (2026-03-05) — scan report received in inbox, Korean text correct, unsubscribe link working
+- [x] Security hardening pass (2026-03-13) — 16 findings addressed, `docs/SECURITY_HARDENING.md`

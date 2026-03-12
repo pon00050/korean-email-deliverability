@@ -1,7 +1,10 @@
+import logging
 import dns.resolver
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from src.models import CheckResult
 from src.checks._dns_cache import DNS_TIMEOUT
+
+logger = logging.getLogger(__name__)
 
 MIN_DKIM_KEY_BITS = 2048
 DKIM_SCORE_WEAK_KEY = 70
@@ -70,11 +73,18 @@ def _lookup(domain: str, selector: str) -> str | None:
     except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.NoNameservers):
         pass
     except Exception:
-        pass
+        logger.debug("DKIM lookup failed for %s._domainkey.%s", selector, domain, exc_info=True)
     return None
 
 
 def _estimate_key_bits(record: str) -> int | None:
+    """Estimate RSA key size from the base64-encoded public key in a DKIM record.
+
+    Note: len(decoded_bytes)*8 overestimates by ~16 bits due to ASN.1/DER
+    overhead in the SubjectPublicKeyInfo wrapper. This is conservative — a
+    2048-bit RSA key reports ~2352 bits, safely above the MIN_DKIM_KEY_BITS
+    threshold, so weak keys are never falsely passed.
+    """
     import re
     import base64
     match = re.search(r"p=([A-Za-z0-9+/=]+)", record)

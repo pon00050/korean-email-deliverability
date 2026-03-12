@@ -3,7 +3,8 @@
 T1 — Grade boundary correctness (parametrized against CLAUDE.md spec)
 T2 — WEIGHTS and NAVER_WEIGHTS each sum to 100
 T3 — All 7 checks pass with score=100 → overall_score == 100
-T4 — 6 pass + 화이트도메인 error → overall_score == 100
+T4 — 5 pass + 화이트도메인 error → overall_score == 100
+T5 — 5 pass + both KISA checks error → overall_score == 100
 """
 import pytest
 
@@ -97,6 +98,28 @@ def test_whitedomain_error_with_all_others_passing_gives_100():
         _pass("DMARC"),
         _pass("PTR"),
         _pass("KISA RBL"),
+        _error("KISA 화이트도메인"),
+        _pass("국제 블랙리스트"),
+    ]
+    assert overall_score(results) == 100
+
+
+# ---------------------------------------------------------------------------
+# T5 — Both KISA checks error (both services terminated) + 5 pass → overall_score == 100
+#
+# KISA RBL terminated January 31, 2024.
+# KISA 화이트도메인 terminated June 28, 2024.
+# Both return status="error" in production. Combined weight excluded = 20.
+# Remaining denominator = 80; 80/80 = 100.
+# ---------------------------------------------------------------------------
+
+def test_both_kisa_checks_error_with_others_passing_gives_100():
+    results = [
+        _pass("SPF"),
+        _pass("DKIM"),
+        _pass("DMARC"),
+        _pass("PTR"),
+        _error("KISA RBL"),
         _error("KISA 화이트도메인"),
         _pass("국제 블랙리스트"),
     ]

@@ -74,34 +74,94 @@ for verifying scanner behaviour. Use any live `.co.kr` domain you have access to
 running `uv run check.py` locally to validate real output.
 Never commit those local run results to a public file.
 
+## Routes
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| GET | `/` | — | Landing page with HTMX scan form |
+| GET | `/subscribe` | — | Email monitoring signup form |
+| POST | `/subscribe` | — | Create subscription |
+| GET | `/unsubscribe` | — | Deactivate subscription by token |
+| GET | `/health` | — | Healthcheck (Railway deploy gate) |
+| POST | `/api/scan` | — | HTMX scan from landing (returns HTML partial, 3/IP/hr rate limit) |
+| GET | `/scan/{domain}` | — | Run scan, persist, redirect to report |
+| GET | `/report/{token}` | — | View persisted scan report (public) |
+| GET | `/report/{token}/pdf` | — | Download PDF of scan report |
+| POST | `/batch` | API key | B2B batch enrichment (≤50 domains) |
+| GET | `/register` | — | Registration form |
+| POST | `/register` | — | Create account |
+| GET | `/login` | — | Login form |
+| POST | `/login` | — | Authenticate (email + password → session cookie) |
+| GET | `/logout` | — | Clear session |
+| GET | `/dashboard` | session | Multi-domain overview |
+| GET | `/dashboard/{domain}` | session | Scan history for one domain |
+| GET | `/dashboard/dmarc` | session | List DMARC report uploads |
+| POST | `/dashboard/dmarc-upload` | session | Upload DMARC XML |
+| GET | `/dashboard/dmarc/{id}` | session | View parsed DMARC detail |
+
+## Database Schema
+
+Six tables (all have SQLite + PostgreSQL variants in `src/db.py`):
+
+| Table | Purpose | Key columns |
+|---|---|---|
+| `customers` | Registered user accounts | email (unique), password_hash, active |
+| `subscribers` | Email monitoring subscriptions | domain, email, interval_hours, customer_id (nullable FK) |
+| `api_keys` | Per-customer batch API keys | customer_id FK, key_hash (unique), active |
+| `scans` | Persisted scan results | domain, customer_id FK, overall, grade, naver, public_token (unique) |
+| `scan_checks` | Individual check results per scan | scan_id FK, name, status, score, message_ko |
+| `dmarc_uploads` | Parsed DMARC aggregate reports | customer_id FK, domain, org_name, report_json |
+
 ## Conventions
 - Korean is the primary language for all user-facing strings (`message_ko`, `detail_ko`, `remediation_ko`).
 - `status` values: `"pass"`, `"warn"`, `"fail"`, `"error"` — no others.
 - Score range: 0–100 integers.
 - All new checks must return a `CheckResult` (see `src/models.py`).
 - Use `uv` for all package management — not pip directly.
+- **Session auth:** `itsdangerous` signed cookie `senderfit_session` containing `customer_id`.
+  Password hashing: `bcrypt` via `src/auth.py:hash_password()` / `verify_password()`.
+  Protected routes use `get_current_customer_id(request)` → returns customer_id or None.
+- **API key auth:** `sf_live_` prefix + 32 base62 chars. SHA-256 hash stored in DB.
+  `BATCH_API_KEY` env var still works as legacy fallback; per-customer keys preferred.
+- **HTMX pattern (landing page):** `hx-post="/api/scan"` on the form, `hx-target="#scan-results"`.
+  Rate limit: 3 scans/IP/hour (in-memory counter, resets on deploy).
+- **PDF generation:** requires WeasyPrint system deps; tests gated with `pytest.importorskip("weasyprint")`.
+  Korean fonts: `fonts-noto-cjk` must be installed on the server.
 - **Named constants over magic numbers:** Prefer dynamic, named constants (e.g. `MIN_DKIM_KEY_BITS`, `MAX_IPS_TO_CHECK`, `GRADE_THRESHOLDS`) over inline literals. Protocol-spec strings (`v=spf1`, `_dmarc.`, etc.) are exempt — they are fixed by the standard.
+- **CSRF protection:** All browser-form POST routes must include a `csrf_token` hidden field
+  and call `_check_csrf(request, csrf_token)`. JSON API routes (e.g. `/batch`) are exempt.
+  CSRF tokens are generated via `src/auth.py:generate_csrf_token()` (itsdangerous-based, 1hr max_age).
+- **XML parsing:** Use `defusedxml` instead of `xml.etree.ElementTree` for untrusted XML.
+  The `src/dmarc_parser.py` string-based DOCTYPE check is retained as defense-in-depth.
+- **Session max_age:** 7 days (constant `SESSION_MAX_AGE` in `src/auth.py`). All cookie
+  `max_age=` values must reference this constant, not hardcode a number.
+- **SECRET_KEY:** Required in production. Falls back to dev default only when `SENDERFIT_SKIP_DB=1`.
+  Missing SECRET_KEY without SENDERFIT_SKIP_DB raises `RuntimeError` at first session operation.
 - **DNS queries must be parallelised and time-bounded:** Use `DNS_TIMEOUT = 5` (from
   `src/checks/_dns_cache.py`) as the `lifetime=` argument on every `dns.resolver.resolve()`
   call. Multiple independent DNS queries within a single check must use `ThreadPoolExecutor`.
   Top-level check execution in `check.py` must use `ThreadPoolExecutor`. Never add a
   sequential loop over DNS queries without justification.
   `get_sending_ips()` (in `src/checks/_dns_cache.py`) caps results to
-  `_MAX_IPS = 3` IPs per domain. RBL and blacklist checks only test these IPs.
+  `_MAX_IPS = 3` IPs per domain. The blacklist check uses these IPs.
+  (KISA RBL terminated Jan 2024 — `check_kisa_rbl` no longer makes DNS queries.)
 
 ## Scoring
 
 Overall score weights (defined in `src/scorer.py`, must sum to 100):
 
-| Check | Weight |
-|---|---|
-| DMARC | 25 |
-| SPF | 20 |
-| KISA RBL | 15 |
-| DKIM | 15 |
-| PTR | 10 |
-| 국제 블랙리스트 | 10 |
-| KISA 화이트도메인 | 5 |
+| Check | Weight | Note |
+|---|---|---|
+| DMARC | 25 | |
+| SPF | 20 | |
+| KISA RBL | 15 | **Service terminated Jan 31, 2024** — always `error`; excluded from denominator |
+| DKIM | 15 | |
+| PTR | 10 | |
+| 국제 블랙리스트 | 10 | |
+| KISA 화이트도메인 | 5 | **Service terminated Jun 28, 2024** — always `error`; excluded from denominator |
+
+Both KISA checks return `status="error"` permanently. The scorer excludes `error` checks from
+the denominator, so 100/100 is still achievable with the remaining 5 checks.
 
 Naver compatibility score uses separate weights (see `src/scorer.py:NAVER_WEIGHTS`).
 The Naver score is displayed as a secondary indicator and is NOT added to the overall score

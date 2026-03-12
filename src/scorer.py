@@ -33,11 +33,12 @@ WEIGHTS: dict[str, int] = {
     "DKIM": 15,
     "DMARC": 25,
     "PTR": 10,
-    "KISA RBL": 15,
-    # KISA 화이트도메인 service was terminated June 2024. The check returns
+    # KISA RBL service was terminated January 31, 2024. The check returns
     # status="error", which causes overall_score() to exclude this weight from
     # the denominator — so 100/100 is still achievable. The entry is kept here
     # so the weights sum to 100 and the error-exclusion scaling works correctly.
+    "KISA RBL": 15,
+    # KISA 화이트도메인 service was terminated June 28, 2024. Same treatment.
     "KISA 화이트도메인": 5,
     "국제 블랙리스트": 10,
 }

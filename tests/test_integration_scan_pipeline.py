@@ -105,7 +105,6 @@ def _run_all_checks(mock_resolve_fn, mock_ips=None):
 
     with (
         patch("dns.resolver.resolve", side_effect=mock_resolve_fn),
-        patch("src.checks.kisa_rbl.get_sending_ips", return_value=set(mock_ips)),
         patch("src.checks.blacklists.get_sending_ips", return_value=set(mock_ips)),
         patch("socket.gethostbyname", return_value=_FAKE_IP),
     ):
@@ -158,7 +157,7 @@ class TestPipelineAllPassChecks:
         generate_report(_DOMAIN, all_pass_results, out)
         html = out.read_text(encoding="utf-8")
 
-        # KISA 화이트도메인 returns error (service terminated) — score should still be 100
+        # Both KISA checks (RBL + 화이트도메인) return error (services terminated) — score should still be 100
         assert score == 100
         assert g == "A"
         assert "100" in html

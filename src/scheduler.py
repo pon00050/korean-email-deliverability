@@ -104,29 +104,5 @@ def make_apscheduler_job(conn_factory, scan_executor=None, email_sender=None):
 
 def _default_scan_executor(domain: str) -> tuple[list[CheckResult], dict[str, Any]]:
     """Run the full check pipeline and return (results, scores)."""
-    from concurrent.futures import ThreadPoolExecutor
-    from src.checks import (
-        check_spf, check_dkim, check_dmarc, check_ptr,
-        check_kisa_rbl, check_kisa_whitedomain, check_blacklists,
-    )
-    from src.scorer import overall_score, naver_score, grade, naver_label
-
-    checks = [
-        check_spf, check_dkim, check_dmarc, check_ptr,
-        check_kisa_rbl, check_kisa_whitedomain, check_blacklists,
-    ]
-
-    with ThreadPoolExecutor() as pool:
-        futures = [pool.submit(fn, domain) for fn in checks]
-        results = [f.result() for f in futures]
-
-    o_score = overall_score(results)
-    n_score = naver_score(results)
-    _, n_label = naver_label(n_score)
-    scores = {
-        "overall": o_score,
-        "grade": grade(o_score),
-        "naver": n_score,
-        "naver_label": n_label,
-    }
-    return results, scores
+    from src.scanner import run_scan
+    return run_scan(domain)

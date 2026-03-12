@@ -48,12 +48,15 @@ handling for batches >50 domains are scoped but not yet scheduled.
 
 ---
 
-## Phase 4 — Web UI + Multi-Domain Dashboard (post-May 2026)
+## Phase 4 — Web UI + Multi-Domain Dashboard 🔧 (in progress)
 
-- Hosted web UI: submit a domain, get a shareable scan URL (mail-tester.com style)
-- Multi-domain dashboard: customer sees all subscribed domains and their current scores
-- DMARC aggregate report upload: XML parsing, pass/fail summary by source IP
-- PDF export of scan report
+- [x] **Database schema foundation** — customers, api_keys, scans, scan_checks, dmarc_uploads tables (SQLite + PG)
+- [x] **Per-customer API keys** — `sf_live_` prefixed keys, SHA-256 hashed, admin CLI provisioning
+- [x] **Scan persistence + shareable URLs** — every scan gets a permanent `/report/{token}` URL
+- [x] **Landing page + web scan UI** — HTMX-powered Korean landing page with inline scan results
+- [x] **Multi-domain dashboard** — session auth (itsdangerous), login/register, scan history per domain
+- [x] **DMARC aggregate report upload** — XML parsing (RFC 7489), per-source-IP pass/fail summary
+- [x] **PDF export** — WeasyPrint HTML→PDF with Korean font support
 
 ---
 

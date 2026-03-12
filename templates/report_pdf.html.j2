@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>이메일 도메인 상태 보고서 — {{ scan.domain }}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 20mm 15mm;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans CJK KR', 'Noto Sans KR', 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    color: #1e293b;
+    font-size: 10pt;
+    line-height: 1.6;
+  }
+
+  .header {
+    background: #1e293b;
+    color: white;
+    padding: 24px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+  }
+  .header h1 { font-size: 10pt; font-weight: 400; opacity: 0.7; margin-bottom: 2px; }
+  .header .domain { font-size: 18pt; font-weight: 800; margin-bottom: 8px; }
+  .header .meta { font-size: 8pt; opacity: 0.5; }
+
+  .score-row { display: flex; align-items: center; gap: 16px; margin-top: 12px; }
+  .score-circle {
+    width: 56px; height: 56px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16pt; font-weight: 800;
+    {% if scan.overall >= 90 %}background: #16a34a;
+    {% elif scan.overall >= 75 %}background: #2563eb;
+    {% elif scan.overall >= 60 %}background: #ca8a04;
+    {% elif scan.overall >= 40 %}background: #ea580c;
+    {% else %}background: #dc2626;{% endif %}
+    color: white;
+  }
+  .score-num { font-size: 20pt; font-weight: 800; }
+  .score-label { font-size: 8pt; opacity: 0.6; }
+
+  .naver-panel {
+    border-left: 3px solid #03c75a;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    background: #f0fdf4;
+    border-radius: 6px;
+  }
+  .naver-panel h2 { font-size: 8pt; color: #64748b; margin-bottom: 4px; }
+  .naver-score { font-size: 14pt; font-weight: 800; }
+  .naver-label { font-size: 9pt; }
+
+  .card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+  .card h2 { font-size: 10pt; font-weight: 700; margin-bottom: 10px; color: #475569; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 7pt; color: #94a3b8; font-weight: 600; padding: 4px 6px;
+       text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #e2e8f0; }
+  td { padding: 6px; font-size: 9pt; border-bottom: 1px solid #f1f5f9; }
+
+  .badge { display: inline-block; padding: 1px 6px; border-radius: 99px; font-size: 7pt; font-weight: 700; }
+  .badge-pass { background: #dcfce7; color: #166534; }
+  .badge-warn { background: #fef9c3; color: #854d0e; }
+  .badge-fail { background: #fee2e2; color: #991b1b; }
+  .badge-error { background: #f3f4f6; color: #374151; }
+
+  .detail-section { margin-bottom: 12px; page-break-inside: avoid; }
+  .detail-section h3 { font-size: 9pt; font-weight: 700; margin-bottom: 4px; }
+  .detail-section .label { font-size: 7pt; text-transform: uppercase; color: #94a3b8; margin-bottom: 2px; }
+  .detail-section p { font-size: 9pt; color: #374151; }
+  .raw { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;
+         padding: 6px 8px; font-family: monospace; font-size: 8pt; word-break: break-all; }
+
+  .footer { text-align: center; font-size: 7pt; color: #94a3b8; margin-top: 20px;
+            padding-top: 12px; border-top: 1px solid #e2e8f0; }
+</style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>이메일 도메인 상태 보고서</h1>
+    <div class="domain">{{ scan.domain }}</div>
+    <div class="meta">검사 시각: {{ scan.scanned_at }} | 보고서 URL: {{ report_url }}</div>
+    <div class="score-row">
+      <div class="score-circle">{{ scan.grade }}</div>
+      <div>
+        <div class="score-num">{{ scan.overall }}/100</div>
+        <div class="score-label">전체 도메인 건강 점수</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="naver-panel">
+    <h2>네이버 메일 호환성 점수</h2>
+    <div class="naver-score">{{ scan.naver }}/100</div>
+    <div class="naver-label">{{ scan.naver_label }}</div>
+  </div>
+
+  <div class="card">
+    <h2>검사 요약</h2>
+    <table>
+      <thead>
+        <tr><th>항목</th><th>결과</th><th>점수</th><th>주요 발견</th></tr>
+      </thead>
+      <tbody>
+        {% for c in scan.checks %}
+        <tr>
+          <td><strong>{{ c.name }}</strong></td>
+          <td>
+            <span class="badge badge-{{ c.status }}">
+              {% if c.status == 'pass' %}통과{% elif c.status == 'warn' %}주의{% elif c.status == 'fail' %}실패{% else %}오류{% endif %}
+            </span>
+          </td>
+          <td>{{ c.score }}/100</td>
+          <td>{{ c.message_ko }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 style="font-size:10pt; font-weight:700; color:#475569; margin-bottom:10px;">항목별 상세 결과</h2>
+  {% for c in scan.checks %}
+  <div class="detail-section">
+    <h3>
+      {% if c.status == 'pass' %}&#x2705;{% elif c.status == 'warn' %}&#x26A0;{% elif c.status == 'fail' %}&#x274C;{% else %}&#x2796;{% endif %}
+      {{ c.name }}
+    </h3>
+    {% if c.detail_ko %}
+    <div class="label">설명</div>
+    <p>{{ c.detail_ko }}</p>
+    {% endif %}
+    {% if c.remediation_ko %}
+    <div class="label" style="margin-top:4px;">조치 방법</div>
+    <p>{{ c.remediation_ko }}</p>
+    {% endif %}
+    {% if c.raw %}
+    <div class="label" style="margin-top:4px;">원시 레코드</div>
+    <div class="raw">{{ c.raw }}</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <div class="footer">
+    Senderfit &middot; senderfit.kr &middot; 이 결과는 참고용이며 전문 컨설팅을 대체하지 않습니다
+  </div>
+
+</body>
+</html>

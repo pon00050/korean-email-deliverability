@@ -12,10 +12,11 @@ from datetime import datetime, timezone
 from typing import Any
 
 from src.models import CheckResult
-from src.scheduler import _default_scan_executor
+from src.scanner import run_scan
 from src.scorer import WEIGHTS
 
 _MAX_BATCH_DOMAINS = 50
+_MAX_BATCH_WORKERS = 10
 
 # Derived from WEIGHTS so new checks appear in output automatically
 _BATCH_CHECK_ORDER: list[str] = list(WEIGHTS.keys())
@@ -36,8 +37,8 @@ def run_batch_scan(domains: list[str]) -> dict[str, Any]:
     """Scan multiple domains in parallel; return structured result dict."""
     results_map: dict[str, dict] = {}
 
-    with ThreadPoolExecutor(max_workers=min(len(domains), _MAX_BATCH_DOMAINS)) as pool:
-        futures = {pool.submit(_default_scan_executor, d): d for d in domains}
+    with ThreadPoolExecutor(max_workers=min(len(domains), _MAX_BATCH_WORKERS)) as pool:
+        futures = {pool.submit(run_scan, d): d for d in domains}
         for fut in as_completed(futures):
             domain = futures[fut]
             try:

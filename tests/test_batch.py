@@ -42,7 +42,7 @@ def _fake_results() -> list[CheckResult]:
         CheckResult(name="DKIM",           status="fail", score=0,   message_ko="DKIM 레코드 없음"),
         CheckResult(name="DMARC",          status="fail", score=0,   message_ko="DMARC 레코드 없음"),
         CheckResult(name="PTR",            status="pass", score=100, message_ko="PTR 레코드 정상"),
-        CheckResult(name="KISA RBL",       status="pass", score=100, message_ko="차단 목록 없음"),
+        CheckResult(name="KISA RBL",       status="error", score=0,  message_ko="서비스 종료"),
         CheckResult(name="KISA 화이트도메인", status="error", score=0,  message_ko="서비스 종료"),
         CheckResult(name="국제 블랙리스트",  status="pass", score=100, message_ko="국제 블랙리스트 없음"),
     ]
@@ -74,7 +74,7 @@ def client():
 # Test 1: Happy path — JSON response
 # ---------------------------------------------------------------------------
 
-@patch("src.batch._default_scan_executor")
+@patch("src.batch.run_scan")
 def test_batch_json_happy_path(mock_exec, client):
     mock_exec.return_value = (_fake_results(), _fake_scores())
 
@@ -96,7 +96,7 @@ def test_batch_json_happy_path(mock_exec, client):
 # Test 2: CSV output
 # ---------------------------------------------------------------------------
 
-@patch("src.batch._default_scan_executor")
+@patch("src.batch.run_scan")
 def test_batch_csv_output(mock_exec, client):
     mock_exec.return_value = (_fake_results(), _fake_scores())
 
@@ -121,7 +121,7 @@ def test_batch_csv_output(mock_exec, client):
 # Test 3: Auth rejects bad key when BATCH_API_KEY is set
 # ---------------------------------------------------------------------------
 
-@patch("src.batch._default_scan_executor")
+@patch("src.batch.run_scan")
 def test_batch_auth_rejects_bad_key(mock_exec, client, monkeypatch):
     monkeypatch.setenv("BATCH_API_KEY", "secret-key")
     mock_exec.return_value = (_fake_results(), _fake_scores())
@@ -139,7 +139,7 @@ def test_batch_auth_rejects_bad_key(mock_exec, client, monkeypatch):
 # Test 4: Auth disabled when BATCH_API_KEY is not set
 # ---------------------------------------------------------------------------
 
-@patch("src.batch._default_scan_executor")
+@patch("src.batch.run_scan")
 def test_batch_auth_disabled_when_env_unset(mock_exec, client, monkeypatch):
     monkeypatch.delenv("BATCH_API_KEY", raising=False)
     mock_exec.return_value = (_fake_results(), _fake_scores())
@@ -179,7 +179,7 @@ def test_batch_one_domain_errors(client):
             raise RuntimeError("DNS timeout")
         return (_fake_results(), _fake_scores())
 
-    with patch("src.batch._default_scan_executor", side_effect=_side_effect):
+    with patch("src.batch.run_scan", side_effect=_side_effect):
         resp = client.post(
             "/batch",
             json={"domains": ["good.co.kr", "bad.co.kr"]},

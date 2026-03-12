@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>대시보드 — Senderfit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans KR', sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.6; }
+
+  .topbar { background: #0c1222; color: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .topbar .brand { font-weight: 800; font-size: 1rem; }
+  .topbar nav { display: flex; gap: 16px; font-size: 0.85rem; }
+  .topbar nav a { color: rgba(255,255,255,0.6); text-decoration: none; }
+  .topbar nav a:hover { color: #fff; }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+
+  .welcome { margin-bottom: 32px; }
+  .welcome h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 4px; }
+  .welcome p { font-size: 0.88rem; color: #64748b; }
+
+  .domain-grid { display: grid; gap: 16px; }
+
+  .domain-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px 24px;
+                 display: flex; align-items: center; gap: 20px; text-decoration: none; color: inherit;
+                 transition: border-color 0.2s, box-shadow 0.2s; }
+  .domain-card:hover { border-color: #2563eb; box-shadow: 0 4px 16px rgba(37,99,235,0.06); }
+
+  .score-circle { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center;
+                  justify-content: center; font-size: 1.1rem; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .score-a { background: #16a34a; }
+  .score-b { background: #2563eb; }
+  .score-c { background: #ca8a04; }
+  .score-d { background: #ea580c; }
+  .score-f { background: #dc2626; }
+
+  .domain-info { flex: 1; }
+  .domain-info .name { font-family: 'JetBrains Mono', monospace; font-weight: 600; font-size: 1rem; }
+  .domain-info .meta { font-size: 0.82rem; color: #64748b; }
+
+  .domain-score { text-align: right; }
+  .domain-score .num { font-size: 1.3rem; font-weight: 800; }
+  .domain-score .label { font-size: 0.75rem; color: #94a3b8; }
+
+  .empty { text-align: center; padding: 60px 20px; color: #94a3b8; }
+  .empty h2 { font-size: 1.1rem; font-weight: 600; color: #64748b; margin-bottom: 8px; }
+  .empty p { font-size: 0.88rem; margin-bottom: 20px; }
+  .empty a { display: inline-block; padding: 10px 20px; background: #2563eb; color: #fff;
+             border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 0.92rem; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">Senderfit</div>
+    <nav>
+      <a href="/dashboard">대시보드</a>
+      <a href="/">홈</a>
+      <a href="/logout">로그아웃</a>
+    </nav>
+  </div>
+
+  <div class="container">
+    <div class="welcome">
+      <h1>{{ customer.name or customer.email }}님의 대시보드</h1>
+      <p>등록된 도메인의 최신 점수를 확인하세요. 점수가 변동하면 이메일로 알림을 보내드립니다.</p>
+    </div>
+
+    {% if domains %}
+    <div class="domain-grid">
+      {% for d in domains %}
+      <a href="/dashboard/{{ d.domain }}" class="domain-card">
+        <div class="score-circle score-{{ d.grade|lower }}">{{ d.grade }}</div>
+        <div class="domain-info">
+          <div class="name">{{ d.domain }}</div>
+          <div class="meta">마지막 검사: {{ d.scanned_at }}</div>
+        </div>
+        <div class="domain-score">
+          <div class="num">{{ d.overall }}/100</div>
+          <div class="label">전체 점수</div>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">
+      <h2>아직 등록된 도메인이 없습니다</h2>
+      <p>도메인을 검사하고 모니터링을 시작하세요.</p>
+      <a href="/">도메인 검사하기</a>
+    </div>
+    {% endif %}
+  </div>
+</body>
+</html>

@@ -9,6 +9,7 @@ test environment — only SQLite is used here.
 """
 import sqlite3
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from types import ModuleType
 from unittest.mock import MagicMock, patch
 
@@ -88,9 +89,17 @@ def client(sqlite_conn):
         patch.object(app_module, "get_db", return_value=sqlite_conn),
         patch.object(app_module, "BackgroundScheduler"),   # prevent real scheduler start
         patch("threading.Thread"),                          # prevent real DNS scan threads
+        patch.dict("os.environ", {"SECRET_KEY": "test-secret-routes"}),
         TestClient(app_module.app, raise_server_exceptions=True) as c,
     ):
         yield c, sqlite_conn
+
+
+def _get_csrf_token():
+    """Generate a valid CSRF token matching TestClient's session identity."""
+    from src.auth import generate_csrf_token
+    # TestClient sets request.client.host = "testclient", no session cookie → empty prefix
+    return generate_csrf_token("testclient:")
 
 
 # ---------------------------------------------------------------------------
@@ -108,12 +117,12 @@ def test_health_returns_ok(client):
 # GET /
 # ---------------------------------------------------------------------------
 
-def test_signup_page_returns_html(client):
+def test_landing_page_returns_html(client):
     c, _ = client
     resp = c.get("/")
     assert resp.status_code == 200
     assert "text/html" in resp.headers["content-type"]
-    assert b"<form" in resp.content
+    assert "Senderfit" in resp.text
 
 
 # ---------------------------------------------------------------------------
@@ -122,7 +131,8 @@ def test_signup_page_returns_html(client):
 
 def test_subscribe_creates_subscriber(client):
     c, conn = client
-    resp = c.post("/subscribe", data={"domain": "example.co.kr", "email": "user@example.com"})
+    csrf = _get_csrf_token()
+    resp = c.post("/subscribe", data={"domain": "example.co.kr", "email": "user@example.com", "csrf_token": csrf})
     assert resp.status_code == 200
     row = conn.execute("SELECT * FROM subscribers WHERE domain = 'example.co.kr'").fetchone()
     assert row is not None
@@ -132,9 +142,10 @@ def test_subscribe_creates_subscriber(client):
 
 def test_subscribe_strips_https_prefix(client):
     c, conn = client
+    csrf = _get_csrf_token()
     resp = c.post(
         "/subscribe",
-        data={"domain": "https://example.co.kr/", "email": "u@example.com"},
+        data={"domain": "https://example.co.kr/", "email": "u@example.com", "csrf_token": csrf},
     )
     assert resp.status_code == 200
     row = conn.execute("SELECT domain FROM subscribers").fetchone()
@@ -143,7 +154,8 @@ def test_subscribe_strips_https_prefix(client):
 
 def test_subscribe_returns_success_html(client):
     c, _ = client
-    resp = c.post("/subscribe", data={"domain": "example.co.kr", "email": "u@example.com"})
+    csrf = _get_csrf_token()
+    resp = c.post("/subscribe", data={"domain": "example.co.kr", "email": "u@example.com", "csrf_token": csrf})
     assert resp.status_code == 200
     # The template renders a success message when success=True is passed
     assert b"example.co.kr" in resp.content
@@ -155,8 +167,9 @@ def test_subscribe_returns_success_html(client):
 
 def test_unsubscribe_with_valid_token_deactivates(client):
     c, conn = client
+    csrf = _get_csrf_token()
     # First subscribe to get a real token
-    c.post("/subscribe", data={"domain": "example.co.kr", "email": "u@example.com"})
+    c.post("/subscribe", data={"domain": "example.co.kr", "email": "u@example.com", "csrf_token": csrf})
     row = conn.execute("SELECT unsubscribe_token FROM subscribers").fetchone()
     token = row["unsubscribe_token"]
 
@@ -206,8 +219,76 @@ def test_invalid_unsubscribe_token_never_returns_5xx(client, token):
 )
 def test_subscribe_rejects_invalid_input(client, form_data, expected_keyword):
     c, conn = client
+    form_data["csrf_token"] = _get_csrf_token()
     resp = c.post("/subscribe", data=form_data)
     assert resp.status_code == 200
     assert expected_keyword in resp.text
     row = conn.execute("SELECT * FROM subscribers").fetchone()
     assert row is None
+
+
+# ---------------------------------------------------------------------------
+# Rate limiter thread safety
+# ---------------------------------------------------------------------------
+
+def test_rate_limiter_thread_safety():
+    """Concurrent calls to _check_rate_limit must not exceed SCAN_RATE_LIMIT."""
+    import app as app_module
+    # Reset rate limiter state
+    app_module._scan_requests.clear()
+
+    results = []
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        futures = [pool.submit(app_module._check_rate_limit, "test-ip") for _ in range(10)]
+        results = [f.result() for f in futures]
+
+    allowed = sum(1 for r in results if r)
+    assert allowed == app_module.SCAN_RATE_LIMIT  # exactly 3
+
+
+# ---------------------------------------------------------------------------
+# DB failure handling
+# ---------------------------------------------------------------------------
+
+def test_subscribe_raises_on_db_failure(client):
+    """When get_db raises during POST /subscribe, the error propagates (500 in production)."""
+    import app as app_module
+    c, _ = client
+    csrf = _get_csrf_token()
+    with patch.object(app_module, "get_db", side_effect=RuntimeError("DB down")):
+        with pytest.raises(RuntimeError, match="DB down"):
+            c.post(
+                "/subscribe",
+                data={"domain": "example.co.kr", "email": "u@example.com", "csrf_token": csrf},
+            )
+
+
+# ---------------------------------------------------------------------------
+# CSRF protection
+# ---------------------------------------------------------------------------
+
+def test_post_subscribe_without_csrf_returns_403(client):
+    """POST /subscribe without CSRF token must return 403."""
+    c, _ = client
+    resp = c.post("/subscribe", data={"domain": "example.co.kr", "email": "u@example.com"})
+    assert resp.status_code == 403
+
+
+def test_post_subscribe_with_valid_csrf_succeeds(client):
+    """POST /subscribe with valid CSRF token succeeds."""
+    c, conn = client
+    csrf = _get_csrf_token()
+    resp = c.post("/subscribe", data={
+        "domain": "example.co.kr", "email": "u@example.com", "csrf_token": csrf,
+    })
+    assert resp.status_code == 200
+    row = conn.execute("SELECT * FROM subscribers").fetchone()
+    assert row is not None
+
+
+def test_batch_route_has_no_csrf_parameter():
+    """POST /batch (JSON API) does not have a csrf_token parameter — CSRF is structurally skipped."""
+    import inspect
+    import app as app_module
+    sig = inspect.signature(app_module.batch_scan)
+    assert "csrf_token" not in sig.parameters

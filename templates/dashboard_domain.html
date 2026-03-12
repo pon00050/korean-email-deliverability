@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ domain }} — 검사 기록 — Senderfit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans KR', sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.6; }
+
+  .topbar { background: #0c1222; color: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .topbar .brand { font-weight: 800; font-size: 1rem; }
+  .topbar nav { display: flex; gap: 16px; font-size: 0.85rem; }
+  .topbar nav a { color: rgba(255,255,255,0.6); text-decoration: none; }
+  .topbar nav a:hover { color: #fff; }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 40px 24px; }
+
+  .breadcrumb { font-size: 0.82rem; color: #94a3b8; margin-bottom: 16px; }
+  .breadcrumb a { color: #2563eb; text-decoration: none; }
+
+  h1 { font-family: 'JetBrains Mono', monospace; font-size: 1.3rem; font-weight: 700; margin-bottom: 4px; }
+  .hint { font-size: 0.85rem; color: #64748b; margin-bottom: 32px; }
+
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden;
+          border: 1px solid #e2e8f0; }
+  th { text-align: left; font-size: 0.78rem; color: #94a3b8; font-weight: 500; padding: 12px 16px;
+       text-transform: uppercase; letter-spacing: 0.04em; background: #f8fafc; }
+  td { padding: 14px 16px; border-top: 1px solid #f1f5f9; font-size: 0.9rem; }
+
+  .grade-badge { display: inline-block; padding: 2px 10px; border-radius: 99px; font-size: 0.75rem; font-weight: 700; }
+  .grade-a { background: #dcfce7; color: #166534; }
+  .grade-b { background: #dbeafe; color: #1e40af; }
+  .grade-c { background: #fef9c3; color: #854d0e; }
+  .grade-d { background: #fed7aa; color: #9a3412; }
+  .grade-f { background: #fee2e2; color: #991b1b; }
+
+  .report-link { color: #2563eb; text-decoration: none; font-weight: 500; font-size: 0.85rem; }
+  .report-link:hover { text-decoration: underline; }
+
+  .empty { text-align: center; padding: 60px 20px; color: #94a3b8; font-size: 0.92rem; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">Senderfit</div>
+    <nav>
+      <a href="/dashboard">대시보드</a>
+      <a href="/">홈</a>
+      <a href="/logout">로그아웃</a>
+    </nav>
+  </div>
+
+  <div class="container">
+    <div class="breadcrumb"><a href="/dashboard">대시보드</a> / {{ domain }}</div>
+
+    <h1>{{ domain }}</h1>
+    <p class="hint">과거 검사 기록을 확인하고 점수 변화를 추적하세요.</p>
+
+    {% if scans %}
+    <table>
+      <thead>
+        <tr>
+          <th>검사 시각</th>
+          <th>등급</th>
+          <th>전체 점수</th>
+          <th>네이버</th>
+          <th>보고서</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in scans %}
+        <tr>
+          <td>{{ s.scanned_at }}</td>
+          <td><span class="grade-badge grade-{{ s.grade|lower }}">{{ s.grade }}</span></td>
+          <td>{{ s.overall }}/100</td>
+          <td>{{ s.naver }}/100</td>
+          <td><a href="/report/{{ s.public_token }}" class="report-link">보기 &#x2192;</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">이 도메인의 검사 기록이 없습니다.</div>
+    {% endif %}
+  </div>
+</body>
+</html>

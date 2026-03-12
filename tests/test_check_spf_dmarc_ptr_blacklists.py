@@ -78,6 +78,19 @@ class TestDMARC:
         assert r.status == "fail"
         assert r.score == 0
 
+    def test_dmarc_multiple_records_warns(self):
+        """Multiple v=DMARC1 records should return warn per RFC 7489."""
+        from src.checks.dmarc import check_dmarc, DMARC_SCORE_MULTIPLE
+        rdata1 = MagicMock()
+        rdata1.strings = [b"v=DMARC1; p=reject"]
+        rdata2 = MagicMock()
+        rdata2.strings = [b"v=DMARC1; p=none"]
+        with patch("dns.resolver.resolve", return_value=[rdata1, rdata2]):
+            r = check_dmarc("example.co.kr")
+        assert r.status == "warn"
+        assert r.score == DMARC_SCORE_MULTIPLE
+        assert "2개 이상" in r.message_ko
+
 
 # ─── Scorer (Naver only — overall/grade tests are in test_scorer.py) ──────────
 

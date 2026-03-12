@@ -68,13 +68,25 @@ def send_scan_report(
     overall = scores.get("overall", 0)
     subject = f"[이메일 건강도] {domain} — {overall}/100 ({grade}등급)"
 
+    from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+
+    RESEND_TIMEOUT_SECONDS = 30
+
     try:
-        resend.Emails.send({
-            "from": from_email,
-            "to": [to_email],
-            "subject": subject,
-            "html": html,
-        })
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(resend.Emails.send, {
+                "from": from_email,
+                "to": [to_email],
+                "subject": subject,
+                "html": html,
+            })
+            future.result(timeout=RESEND_TIMEOUT_SECONDS)
+    except FuturesTimeoutError:
+        _logger.error(
+            "Resend API timed out after %ds for recipient=%s domain=%s",
+            RESEND_TIMEOUT_SECONDS, to_email, domain,
+        )
+        raise TimeoutError(f"Resend API timed out after {RESEND_TIMEOUT_SECONDS}s")
     except Exception as exc:
         _logger.error(
             "Resend API call failed for recipient=%s domain=%s: %s",

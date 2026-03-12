@@ -199,7 +199,8 @@ completing Step 2.
 | `RESEND_API_KEY` | *(real key set 2026-03-05)* | ✅ Done |
 | `FROM_EMAIL` | `noreply@senderfit.kr` | ✅ Done |
 | `BASE_URL` | `https://senderfit.kr` | ✅ Set |
-| `BATCH_API_KEY` | *(unset)* | Optional — if set, `POST /batch` requires `X-API-Key` header. Leave unset to disable auth. |
+| `BATCH_API_KEY` | *(unset)* | **Legacy.** Per-customer keys (Phase 4) preferred. If set, accepted as fallback for `POST /batch`. |
+| `SECRET_KEY` | *(required for Phase 4)* | Signing key for session cookies. Generate: `python -c "import secrets; print(secrets.token_hex(32))"` |
 
 ### 3-d-update — BASE_URL updated to custom domain (2026-03-05) ✅
 
@@ -337,6 +338,20 @@ All 90 tests run in CI on every push to `dev`:
 - 17 Phase 1 tests
 - 27 Phase 2 tests (mocked Resend, SQLite for DB — no external services needed)
 - 7 Phase 3a tests (batch API)
+
+---
+
+## Phase 4 — Database Migration
+
+If upgrading from Phase 2/3 to Phase 4, the existing `subscribers` table needs a new
+nullable column to optionally link subscribers to customer accounts:
+
+```sql
+ALTER TABLE subscribers ADD COLUMN customer_id INT REFERENCES customers(id);
+```
+
+The new tables (`customers`, `api_keys`, `scans`, `scan_checks`, `dmarc_uploads`) are
+created automatically on app startup by `create_tables()` in `src/db.py`.
 
 ---
 

@@ -10,10 +10,13 @@ All three offer free DNS-based lookups with no API key required.
 Rate limiting: add per-query delay if running bulk scans.
 """
 
+import logging
 import dns.resolver
 from concurrent.futures import ThreadPoolExecutor
 from src.models import CheckResult
 from src.checks._dns_cache import get_sending_ips, DNS_TIMEOUT
+
+logger = logging.getLogger(__name__)
 
 _IP_BLACKLISTS = {
     "Spamhaus ZEN": "zen.spamhaus.org",
@@ -87,4 +90,5 @@ def _dns_listed(query: str) -> bool:
     except dns.resolver.NXDOMAIN:
         return False
     except Exception:
+        logger.debug("Blacklist DNS query failed for %s", query, exc_info=True)
         return False

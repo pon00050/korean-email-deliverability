@@ -6,6 +6,7 @@ from src.checks._dns_cache import DNS_TIMEOUT
 DMARC_SCORE_REJECT = 100
 DMARC_SCORE_QUARANTINE = 75
 DMARC_SCORE_NONE = 20
+DMARC_SCORE_MULTIPLE = 15
 DMARC_PENALTY_NO_RUA = 10
 
 
@@ -18,15 +19,27 @@ def check_dmarc(domain: str) -> CheckResult:
     except Exception as e:
         return CheckResult(name="DMARC", status="error", score=0, message_ko=f"조회 오류: {e}")
 
-    record = None
+    dmarc_records = []
     for rdata in answers:
         txt = b"".join(rdata.strings).decode("utf-8", errors="ignore")
         if txt.startswith("v=DMARC1"):
-            record = txt
-            break
+            dmarc_records.append(txt)
 
-    if not record:
+    if not dmarc_records:
         return _missing()
+
+    if len(dmarc_records) > 1:
+        return CheckResult(
+            name="DMARC",
+            status="warn",
+            score=DMARC_SCORE_MULTIPLE,
+            message_ko="DMARC 레코드가 2개 이상 존재합니다 — RFC 7489에 따라 하나만 유효합니다",
+            detail_ko=f"발견된 레코드 수: {len(dmarc_records)}",
+            remediation_ko="중복 DMARC TXT 레코드를 제거하고 하나만 유지하세요.",
+            raw="; ".join(dmarc_records),
+        )
+
+    record = dmarc_records[0]
 
     policy = _tag(record, "p") or "none"
     pct = _tag(record, "pct") or "100"

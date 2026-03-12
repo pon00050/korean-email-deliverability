@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Senderfit — 이메일 전달률 진단</title>
+<script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --void: #0a0e1a;
+    --void-light: #0f1527;
+    --void-surface: #141b2d;
+    --ink: #e2e8f0;
+    --ink-dim: #8892a8;
+    --ink-ghost: #475569;
+    --electric: #4f8fff;
+    --electric-dim: rgba(79, 143, 255, 0.12);
+    --electric-glow: rgba(79, 143, 255, 0.35);
+    --naver: #03c75a;
+    --naver-dim: rgba(3, 199, 90, 0.1);
+    --pass: #34d399;
+    --warn: #fbbf24;
+    --fail: #f87171;
+    --surface: #f6f8fb;
+    --surface-card: #ffffff;
+    --surface-ink: #0f172a;
+    --surface-muted: #64748b;
+    --surface-border: #e2e8f0;
+    --sora: 'Sora', sans-serif;
+    --noto: 'Noto Sans KR', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--noto);
+    background: var(--surface);
+    color: var(--surface-ink);
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ─── NOISE TEXTURE ───────────────────────────── */
+  .noise {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: repeat;
+    background-size: 256px;
+  }
+
+  /* ─── HERO ─────────────────────────────────────── */
+  .hero {
+    background: var(--void);
+    color: var(--ink);
+    padding: 0 24px;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Gradient mesh */
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 700px 500px at 20% 40%, rgba(79, 143, 255, 0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 500px 350px at 80% 60%, rgba(3, 199, 90, 0.04) 0%, transparent 70%),
+      radial-gradient(ellipse 300px 300px at 50% 90%, rgba(79, 143, 255, 0.05) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* Grid lines */
+  .hero::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(79, 143, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79, 143, 255, 0.03) 1px, transparent 1px);
+    background-size: 64px 64px;
+    pointer-events: none;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 20%, transparent 70%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 20%, transparent 70%);
+  }
+
+  .hero-content {
+    max-width: 720px;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+    padding: 80px 0;
+  }
+
+  /* Accent line */
+  .accent-line {
+    width: 48px;
+    height: 2px;
+    background: var(--electric);
+    margin-bottom: 32px;
+    animation: lineIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+    box-shadow: 0 0 12px var(--electric-glow);
+  }
+
+  @keyframes lineIn {
+    from { width: 0; opacity: 0; }
+    to { width: 48px; opacity: 1; }
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--sora);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--electric);
+    margin-bottom: 24px;
+    animation: reveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+  }
+
+  .hero-badge::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--electric);
+    box-shadow: 0 0 8px var(--electric-glow);
+    animation: blink 2.4s ease infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .hero h1 {
+    font-family: var(--noto);
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 900;
+    line-height: 1.25;
+    letter-spacing: -0.03em;
+    margin-bottom: 20px;
+    animation: reveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+  }
+
+  .hero h1 .hl {
+    position: relative;
+    display: inline;
+  }
+
+  .hero h1 .hl::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: 2px;
+    height: 3px;
+    background: var(--naver);
+    border-radius: 2px;
+    box-shadow: 0 0 10px rgba(3, 199, 90, 0.3);
+    animation: underlineIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.8s both;
+  }
+
+  @keyframes underlineIn {
+    from { transform: scaleX(0); transform-origin: left; }
+    to { transform: scaleX(1); transform-origin: left; }
+  }
+
+  .hero-sub {
+    font-size: 1.05rem;
+    font-weight: 300;
+    color: var(--ink-dim);
+    max-width: 520px;
+    line-height: 1.8;
+    margin-bottom: 44px;
+    animation: reveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+  }
+
+  @keyframes reveal {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── SCAN FORM ────────────────────────────────── */
+  .scan-form-wrap {
+    animation: reveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.45s both;
+  }
+
+  .scan-form {
+    display: flex;
+    max-width: 520px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(79, 143, 255, 0.15);
+    background: var(--void-light);
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  .scan-form:focus-within {
+    border-color: rgba(79, 143, 255, 0.4);
+    box-shadow:
+      0 0 0 1px rgba(79, 143, 255, 0.1),
+      0 0 40px rgba(79, 143, 255, 0.06),
+      0 20px 60px rgba(0, 0, 0, 0.4);
+  }
+
+  .scan-form input {
+    flex: 1;
+    padding: 18px 22px;
+    font-size: 1rem;
+    font-family: var(--mono);
+    font-weight: 500;
+    border: none;
+    background: transparent;
+    color: var(--ink);
+    outline: none;
+    min-width: 0;
+    letter-spacing: 0.01em;
+  }
+
+  .scan-form input::placeholder {
+    color: var(--ink-ghost);
+    font-family: var(--mono);
+    font-weight: 400;
+  }
+
+  .scan-form button {
+    padding: 18px 32px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    font-family: var(--noto);
+    border: none;
+    background: var(--electric);
+    color: #fff;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.2s, box-shadow 0.2s;
+    position: relative;
+  }
+
+  .scan-form button:hover {
+    background: #3d7aef;
+    box-shadow: 0 0 24px rgba(79, 143, 255, 0.2);
+  }
+
+  .scan-form button:active {
+    transform: scale(0.98);
+  }
+
+  .scan-form button:disabled {
+    background: var(--ink-ghost);
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .scan-hint {
+    font-size: 0.78rem;
+    color: var(--ink-ghost);
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .scan-hint::before {
+    content: '';
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--pass);
+    flex-shrink: 0;
+  }
+
+  /* HTMX loading states */
+  .htmx-request .scan-btn-text { display: none; }
+  .htmx-request .scan-btn-loading { display: inline-flex; }
+  .scan-btn-loading {
+    display: none;
+    align-items: center;
+    gap: 8px;
+  }
+  .scan-btn-loading .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── SCAN RESULTS ──────────────────────────────── */
+  #scan-results {
+    margin-top: 36px;
+    max-width: 520px;
+  }
+  #scan-results:empty { margin-top: 0; }
+
+  /* ─── SCROLL INDICATOR ──────────────────────────── */
+  .scroll-hint {
+    position: absolute;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--ink-ghost);
+    font-size: 0.7rem;
+    font-family: var(--sora);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    animation: reveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) 1.2s both;
+  }
+
+  .scroll-arrow {
+    width: 20px; height: 20px;
+    border-right: 1.5px solid var(--ink-ghost);
+    border-bottom: 1.5px solid var(--ink-ghost);
+    transform: rotate(45deg);
+    animation: bobDown 2s ease infinite;
+  }
+
+  @keyframes bobDown {
+    0%, 100% { transform: rotate(45deg) translateY(0); opacity: 0.5; }
+    50% { transform: rotate(45deg) translateY(4px); opacity: 1; }
+  }
+
+  /* ─── LIGHT SECTIONS ────────────────────────────── */
+  .section {
+    padding: 100px 24px;
+  }
+
+  .section-inner {
+    max-width: 960px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-family: var(--sora);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--electric);
+    margin-bottom: 12px;
+  }
+
+  .section-title {
+    font-size: clamp(1.3rem, 3vw, 1.7rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 56px;
+    color: var(--surface-ink);
+    line-height: 1.4;
+  }
+
+  /* ─── VALUE PROPS ──────────────────────────────── */
+  .features {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--surface-border);
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--surface-border);
+  }
+
+  @media (max-width: 720px) {
+    .features { grid-template-columns: 1fr; }
+  }
+
+  .feature {
+    background: var(--surface-card);
+    padding: 36px 28px;
+    position: relative;
+    transition: background 0.3s;
+  }
+
+  .feature:hover {
+    background: #f8faff;
+  }
+
+  .feature-num {
+    font-family: var(--sora);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--electric);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+  }
+
+  .feature h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--surface-ink);
+  }
+
+  .feature p {
+    font-size: 0.88rem;
+    color: var(--surface-muted);
+    line-height: 1.7;
+  }
+
+  /* ─── HOW IT WORKS ──────────────────────────────── */
+  .how-section {
+    background: var(--surface-card);
+    border-top: 1px solid var(--surface-border);
+    border-bottom: 1px solid var(--surface-border);
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    position: relative;
+  }
+
+  @media (max-width: 640px) {
+    .steps { grid-template-columns: 1fr; }
+  }
+
+  .step {
+    padding: 0 32px;
+    position: relative;
+  }
+
+  .step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 1px;
+    background: var(--surface-border);
+  }
+
+  @media (max-width: 640px) {
+    .step:not(:last-child)::after {
+      right: 0; left: 0; top: auto; bottom: 0;
+      width: auto; height: 1px;
+    }
+    .step { padding: 24px 0; }
+  }
+
+  .step-num {
+    font-family: var(--sora);
+    font-size: 2.4rem;
+    font-weight: 800;
+    color: rgba(79, 143, 255, 0.1);
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+
+  .step h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--surface-ink);
+  }
+
+  .step p {
+    font-size: 0.85rem;
+    color: var(--surface-muted);
+    line-height: 1.6;
+  }
+
+  /* ─── CHECKS GRID ──────────────────────────────── */
+  .checks-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+  }
+
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 12px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--surface-ink);
+    transition: border-color 0.2s, transform 0.2s;
+  }
+
+  .check-item:hover {
+    border-color: var(--electric);
+    transform: translateY(-1px);
+  }
+
+  .check-tag {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--electric);
+    background: var(--electric-dim);
+    padding: 3px 8px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
+  }
+
+  .check-tag.naver {
+    color: var(--naver);
+    background: var(--naver-dim);
+  }
+
+  /* ─── TRUST BAR ─────────────────────────────────── */
+  .trust-bar {
+    background: var(--void);
+    color: var(--ink-dim);
+    padding: 24px;
+    position: relative;
+  }
+
+  .trust-bar::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(79, 143, 255, 0.15) 30%, rgba(79, 143, 255, 0.15) 70%, transparent);
+  }
+
+  .trust-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    flex-wrap: wrap;
+    font-family: var(--sora);
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
+  }
+
+  .trust-inner a {
+    color: var(--ink-ghost);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .trust-inner a:hover { color: var(--ink); }
+
+  .trust-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: var(--ink-dim);
+  }
+
+  .trust-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--naver);
+    box-shadow: 0 0 6px rgba(3, 199, 90, 0.3);
+  }
+
+  .trust-sep {
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: var(--ink-ghost);
+  }
+
+  /* ─── SECONDARY CTAs ────────────────────────────── */
+  .cta-section {
+    background: var(--surface-card);
+    border-top: 1px solid var(--surface-border);
+  }
+
+  .cta-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1px;
+    background: var(--surface-border);
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--surface-border);
+  }
+
+  .cta-card {
+    background: var(--surface-card);
+    padding: 36px 28px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cta-card-tag {
+    font-family: var(--sora);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--surface-muted);
+    margin-bottom: 12px;
+  }
+
+  .cta-card h3 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--surface-ink);
+  }
+
+  .cta-card p {
+    font-size: 0.85rem;
+    color: var(--surface-muted);
+    line-height: 1.7;
+    margin-bottom: 20px;
+    flex: 1;
+  }
+
+  .cta-link {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--electric);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: gap 0.25s;
+  }
+
+  .cta-link:hover { gap: 10px; }
+  .cta-link::after { content: '\2192'; }
+
+  /* ─── FOOTER ────────────────────────────────────── */
+  .footer {
+    padding: 48px 24px;
+    text-align: center;
+    border-top: 1px solid var(--surface-border);
+  }
+
+  .footer-inner {
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  .footer-brand {
+    font-family: var(--sora);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--surface-ink);
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+
+  .footer-disclaimer {
+    font-size: 0.78rem;
+    color: var(--surface-muted);
+    line-height: 1.7;
+    margin-bottom: 16px;
+  }
+
+  .footer-links {
+    font-size: 0.78rem;
+    color: var(--surface-muted);
+  }
+
+  .footer-links a {
+    color: var(--surface-muted);
+    text-decoration: none;
+    border-bottom: 1px solid var(--surface-border);
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  .footer-links a:hover {
+    color: var(--surface-ink);
+    border-color: var(--surface-ink);
+  }
+
+  /* ─── RATE LIMIT ERROR ──────────────────────────── */
+  .rate-limit-msg {
+    background: rgba(248, 113, 113, 0.08);
+    border: 1px solid rgba(248, 113, 113, 0.2);
+    color: var(--fail);
+    border-radius: 12px;
+    padding: 16px 20px;
+    font-size: 0.88rem;
+    font-weight: 500;
+  }
+
+  /* ─── RESPONSIVE ────────────────────────────────── */
+  @media (max-width: 480px) {
+    .scan-form {
+      flex-direction: column;
+      border-radius: 14px;
+    }
+    .scan-form button {
+      border-radius: 0;
+    }
+    .hero { min-height: auto; padding: 60px 0; }
+    .hero-content { padding: 60px 0; }
+    .section { padding: 64px 24px; }
+    .scroll-hint { display: none; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="noise"></div>
+
+  <!-- ═══ HERO ═══ -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="accent-line"></div>
+      <div class="hero-badge">대한민국 최초 이메일 전달률 진단 도구</div>
+
+      <h1>귀사 이메일이<br><span class="hl">네이버 메일</span>에<br>도달하고 있나요?</h1>
+
+      <p class="hero-sub">
+        한국 이메일 전달률은 블랙박스입니다.<br>
+        SPF, DKIM, DMARC 설정 오류 하나로 네이버·다음 수신이 차단될 수 있습니다.
+      </p>
+
+      <div class="scan-form-wrap">
+        <form class="scan-form"
+              hx-post="/api/scan"
+              hx-target="#scan-results"
+              hx-swap="innerHTML"
+              hx-indicator=".scan-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="text"
+                 name="domain"
+                 placeholder="example.co.kr"
+                 autocomplete="off"
+                 autocapitalize="none"
+                 spellcheck="false"
+                 required>
+          <button type="submit">
+            <span class="scan-btn-text">무료 진단</span>
+            <span class="scan-btn-loading"><span class="spinner"></span>검사 중...</span>
+          </button>
+        </form>
+        <p class="scan-hint">회원가입 없이 즉시 결과를 확인할 수 있습니다</p>
+      </div>
+
+      <div id="scan-results"></div>
+    </div>
+
+    <div class="scroll-hint">
+      <span>Scroll</span>
+      <div class="scroll-arrow"></div>
+    </div>
+  </section>
+
+  <!-- ═══ VALUE PROPS ═══ -->
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-label">왜 Senderfit인가</div>
+      <h2 class="section-title">이메일 인프라의 사각지대를 진단합니다</h2>
+
+      <div class="features">
+        <div class="feature">
+          <div class="feature-num">01 &mdash; 검사</div>
+          <h3>7가지 도메인 검사</h3>
+          <p>SPF, DKIM, DMARC, PTR, KISA RBL, 화이트도메인, 국제 블랙리스트를 한 번에 진단합니다.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-num">02 &mdash; 점수</div>
+          <h3>네이버 메일 호환성 점수</h3>
+          <p>네이버 메일 필터링에 영향을 주는 기술 신호를 분석해 수신 가능성을 점수로 제공합니다.</p>
+        </div>
+        <div class="feature">
+          <div class="feature-num">03 &mdash; 속도</div>
+          <h3>즉시 결과 확인</h3>
+          <p>회원가입 없이 5초 내 진단 완료. 공유 가능한 보고서 URL을 즉시 생성합니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ HOW IT WORKS ═══ -->
+  <section class="section how-section">
+    <div class="section-inner">
+      <div class="section-label">진단 과정</div>
+      <h2 class="section-title">3단계로 이메일 건강 상태를 파악하세요</h2>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">01</div>
+          <h3>도메인 입력</h3>
+          <p>진단할 도메인을 입력합니다. 별도의 설치나 설정이 필요 없습니다.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">02</div>
+          <h3>자동 검사 실행</h3>
+          <p>7가지 DNS 기반 검사를 병렬로 실행합니다. 약 5초 소요됩니다.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">03</div>
+          <h3>보고서 확인</h3>
+          <p>점수, 등급, 항목별 상세 결과와 조치 방법을 확인합니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ ALL CHECKS ═══ -->
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-label">검사 항목</div>
+      <h2 class="section-title">이메일 전달에 필요한 모든 요소를 확인합니다</h2>
+
+      <div class="checks-grid">
+        <div class="check-item"><span class="check-tag">SPF</span>발신 도메인 인증 레코드</div>
+        <div class="check-item"><span class="check-tag">DKIM</span>이메일 서명 키 검증</div>
+        <div class="check-item"><span class="check-tag">DMARC</span>정책 수준 및 리포트 설정</div>
+        <div class="check-item"><span class="check-tag">PTR</span>역방향 DNS 일치 여부</div>
+        <div class="check-item"><span class="check-tag">RBL</span>KISA 차단 목록 조회</div>
+        <div class="check-item"><span class="check-tag">WD</span>KISA 화이트도메인 등록</div>
+        <div class="check-item"><span class="check-tag">BL</span>국제 블랙리스트 (Spamhaus, Barracuda, SURBL)</div>
+        <div class="check-item"><span class="check-tag naver">NAVER</span>네이버 메일 호환성 점수</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ TRUST BAR ═══ -->
+  <div class="trust-bar">
+    <div class="trust-inner">
+      <span class="trust-tag"><span class="trust-dot"></span>오픈소스</span>
+      <a href="https://github.com/pon00050/korean-email-deliverability">GitHub</a>
+      <span class="trust-sep"></span>
+      <span>Python &middot; FastAPI &middot; dnspython</span>
+      <span class="trust-sep"></span>
+      <img src="https://github.com/pon00050/korean-email-deliverability/actions/workflows/tests.yml/badge.svg?branch=dev" alt="CI" height="18" style="vertical-align: middle;">
+    </div>
+  </div>
+
+  <!-- ═══ SECONDARY CTAs ═══ -->
+  <section class="section cta-section">
+    <div class="section-inner">
+      <div class="cta-grid">
+        <div class="cta-card">
+          <div class="cta-card-tag">모니터링</div>
+          <h3>정기 모니터링</h3>
+          <p>도메인의 이메일 설정 변화를 감지하고, 점수가 변동하면 이메일로 알려드립니다.</p>
+          <a href="/subscribe" class="cta-link">무료로 구독하기</a>
+        </div>
+        <div class="cta-card">
+          <div class="cta-card-tag">B2B API</div>
+          <h3>배치 API</h3>
+          <p>최대 50개 도메인을 한 번에 검사합니다. JSON 또는 CSV 형식으로 결과를 제공합니다.</p>
+          <a href="/docs" class="cta-link">API 문서 보기</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ FOOTER ═══ -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">Senderfit</div>
+      <p class="footer-disclaimer">
+        이 결과는 참고용이며 전문 컨설팅을 대체하지 않습니다.
+        검사 결과는 공개 DNS 레코드를 기반으로 하며, 개인정보를 수집하거나 저장하지 않습니다.
+      </p>
+      <p class="footer-links">
+        <a href="https://github.com/pon00050/korean-email-deliverability">GitHub</a> &middot;
+        <a href="mailto:contact@senderfit.kr">contact@senderfit.kr</a>
+      </p>
+    </div>
+  </footer>
+
+</body>
+</html>
