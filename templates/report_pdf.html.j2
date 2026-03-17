@@ -112,7 +112,7 @@
           <td><strong>{{ c.name }}</strong></td>
           <td>
             <span class="badge badge-{{ c.status }}">
-              {% if c.status == 'pass' %}통과{% elif c.status == 'warn' %}주의{% elif c.status == 'fail' %}실패{% else %}오류{% endif %}
+              {% if c.status == 'pass' %}통과{% elif c.status == 'warn' %}주의{% elif c.status == 'fail' %}실패{% else %}서비스 종료{% endif %}
             </span>
           </td>
           <td>{{ c.score }}/100</td>

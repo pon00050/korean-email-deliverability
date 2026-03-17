@@ -100,4 +100,4 @@ def naver_label(score: int) -> tuple[str, str]:
 
 
 def status_emoji(status: str) -> str:
-    return {"pass": "✅", "warn": "⚠️", "fail": "❌", "error": "⚠️"}.get(status, "")
+    return {"pass": "✅", "warn": "⚠️", "fail": "❌", "error": "—"}.get(status, "")

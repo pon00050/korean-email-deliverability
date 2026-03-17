@@ -156,7 +156,7 @@
           <td><strong>{{ c.name }}</strong></td>
           <td>
             <span class="badge badge-{{ c.status }}">
-              {% if c.status == 'pass' %}&#x2705; 통과{% elif c.status == 'warn' %}&#x26A0;&#xFE0F; 주의{% elif c.status == 'fail' %}&#x274C; 실패{% else %}&#x26A0;&#xFE0F; 오류{% endif %}
+              {% if c.status == 'pass' %}&#x2705; 통과{% elif c.status == 'warn' %}&#x26A0;&#xFE0F; 주의{% elif c.status == 'fail' %}&#x274C; 실패{% else %}— 서비스 종료{% endif %}
             </span>
           </td>
           <td>{{ c.score }}/100</td>
@@ -174,7 +174,7 @@
     <div class="detail-header" onclick="toggle(this)">
       <div>
         <div class="check-name">
-          {% if c.status == 'pass' %}&#x2705;{% elif c.status == 'warn' %}&#x26A0;&#xFE0F;{% elif c.status == 'fail' %}&#x274C;{% else %}&#x26A0;&#xFE0F;{% endif %}
+          {% if c.status == 'pass' %}&#x2705;{% elif c.status == 'warn' %}&#x26A0;&#xFE0F;{% elif c.status == 'fail' %}&#x274C;{% else %}—{% endif %}
           {{ c.name }}
         </div>
         <div class="check-msg">{{ c.message_ko }}</div>
