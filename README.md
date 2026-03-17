@@ -177,7 +177,6 @@ senderfit <domain> [--dkim-selector <selector>] [--output <path>]
 
 - 네이버 메일 호환성 점수는 공개 신호 기반 추정값입니다 (공식 API 없음)
 - DKIM은 15개 공통 셀렉터를 자동 시도합니다 — 비표준 셀렉터는 `--dkim-selector` 옵션으로 직접 지정하세요
-- KISA 화이트도메인 조회는 자동화 API가 없어 수동 확인을 안내합니다
 - 배치 API는 요청당 최대 50개 도메인을 지원합니다 (대용량 배치는 별도 문의)
 
 ## 로드맵 (Roadmap)

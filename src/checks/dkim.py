@@ -78,20 +78,65 @@ def _lookup(domain: str, selector: str) -> str | None:
 
 
 def _estimate_key_bits(record: str) -> int | None:
-    """Estimate RSA key size from the base64-encoded public key in a DKIM record.
+    """Return the RSA modulus bit length by parsing the DER-encoded SubjectPublicKeyInfo.
 
-    Note: len(decoded_bytes)*8 overestimates by ~16 bits due to ASN.1/DER
-    overhead in the SubjectPublicKeyInfo wrapper. This is conservative — a
-    2048-bit RSA key reports ~2352 bits, safely above the MIN_DKIM_KEY_BITS
-    threshold, so weak keys are never falsely passed.
+    Walks the ASN.1 DER structure to reach the RSA modulus INTEGER and reads
+    its length directly, rather than using the total DER byte count which
+    overestimates by ~34–38 bytes of wrapper overhead.
     """
     import re
     import base64
+
     match = re.search(r"p=([A-Za-z0-9+/=]+)", record)
     if not match:
         return None
     try:
-        key_bytes = base64.b64decode(match.group(1) + "==")
-        return len(key_bytes) * 8
+        der = base64.b64decode(match.group(1) + "==")
+        pos = 0
+
+        def read_len(pos: int) -> tuple[int, int]:
+            b = der[pos]
+            if b & 0x80 == 0:
+                return b, pos + 1
+            n = b & 0x7F
+            return int.from_bytes(der[pos + 1: pos + 1 + n], "big"), pos + 1 + n
+
+        # Outer SEQUENCE
+        if der[pos] != 0x30:
+            return None
+        pos += 1
+        _, pos = read_len(pos)
+
+        # AlgorithmIdentifier SEQUENCE — skip entirely
+        if der[pos] != 0x30:
+            return None
+        pos += 1
+        alg_len, pos = read_len(pos)
+        pos += alg_len
+
+        # BIT STRING
+        if der[pos] != 0x03:
+            return None
+        pos += 1
+        _, pos = read_len(pos)
+        pos += 1  # skip "unused bits" byte (always 0x00 for RSA)
+
+        # RSAPublicKey SEQUENCE
+        if der[pos] != 0x30:
+            return None
+        pos += 1
+        _, pos = read_len(pos)
+
+        # Modulus INTEGER
+        if der[pos] != 0x02:
+            return None
+        pos += 1
+        mod_len, pos = read_len(pos)
+
+        # Strip leading 0x00 padding byte (positive integer with high bit set)
+        if der[pos] == 0x00:
+            mod_len -= 1
+
+        return mod_len * 8
     except Exception:
         return None
