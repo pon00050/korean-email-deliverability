@@ -40,11 +40,9 @@ Organized by urgency, not product phase. For feature-phase context, see ROADMAP.
 - [x] **Scan history / results dashboard** *(Phase 4.4 — 2026-03-13)*
   Multi-domain dashboard with session auth, login/register, scan history per domain.
 
-- [ ] **Batch API onboarding documentation**
-  No public docs exist for POST /batch. A paying B2B customer needs:
-  authentication, request/response schema, rate limits, and error codes.
-  A single markdown page or README section is the minimum.
-  *(Per-customer key auth is now implemented — docs are the remaining gap.)*
+- [x] **Batch API onboarding documentation** *(2026-03-17)*
+  `docs/batch-api.md` — Korean-language, covers auth, request/response schema,
+  rate limits, error codes, and key management CLI.
 
 ---
 
